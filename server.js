@@ -1103,6 +1103,199 @@ function computeScore(findings) {
   return score;
 }
 
+function isPublicIp(ip) {
+  const parts = ip.split('.');
+  if (parts.length !== 4) return false;
+  if (parts.some((p) => !/^\d{1,3}$/.test(p) || +p > 255)) return false;
+  const [a, b] = [+parts[0], +parts[1]];
+  if (a === 10) return false;
+  if (a === 127) return false;
+  if (a === 0) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && b === 168) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false;
+  if (a >= 224) return false;
+  return true;
+}
+
+function getIpGeo(ip) {
+  return new Promise((resolve) => {
+    const url = 'https://ipwho.is/' + encodeURIComponent(ip);
+    https.get(url, { timeout: 8000 }, (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          if (!j || j.success === false) return resolve(null);
+          resolve({
+            country: j.country || '',
+            country_code: j.country_code || '',
+            region: j.region || '',
+            city: j.city || '',
+            lat: j.latitude,
+            lon: j.longitude,
+            isp: (j.connection || {}).isp || '',
+            org: (j.connection || {}).org || '',
+            asn: (j.connection || {}).asn || '',
+            domain: (j.connection || {}).domain || '',
+            timezone: (j.timezone || {}).id || '',
+            flag: (j.flag || {}).emoji || '',
+          });
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+let IANA_BOOTSTRAP = null;
+
+async function getIpBootstrap() {
+  if (IANA_BOOTSTRAP) return IANA_BOOTSTRAP;
+  try {
+    const data = await new Promise((resolve) => {
+      https.get('https://data.iana.org/rdap/ipv4.json', { timeout: 10000 }, (res) => {
+        let d = '';
+        res.on('data', (c) => (d += c));
+        res.on('end', () => {
+          try { resolve(JSON.parse(d)); } catch (e) { resolve(null); }
+        });
+      }).on('error', () => resolve(null));
+    });
+    if (data && Array.isArray(data.services)) IANA_BOOTSTRAP = data.services;
+  } catch (e) {}
+  return IANA_BOOTSTRAP || [];
+}
+
+function ipToInt(ip) {
+  return ip.split('.').reduce((acc, p) => (acc << 8) + (+p), 0) >>> 0;
+}
+
+async function getRdapForIp(ip) {
+  const services = await getIpBootstrap();
+  let base = null;
+  for (const [rirs, cidrs] of services) {
+    for (const cidr of cidrs) {
+      const [net, bits] = cidr.split('/');
+      const mask = bits === '0' ? 0 : (~0 << (32 - +bits)) >>> 0;
+      if ((ipToInt(ip) & mask) === (ipToInt(net) & mask)) {
+        base = rirs[0];
+        break;
+      }
+    }
+    if (base) break;
+  }
+  const urls = base ? ['https://rdap.' + base + '/ip/' + ip] : [];
+  if (!urls.includes('https://rdap.arin.net/registry/ip/' + ip)) {
+    urls.push('https://rdap.arin.net/registry/ip/' + ip);
+    urls.push('https://rdap.ripe.net/ip/' + ip);
+    urls.push('https://rdap.apnic.net/ip/' + ip);
+  }
+  for (const url of urls) {
+    const j = await new Promise((resolve) => {
+      https.get(url, { timeout: 9000, headers: { 'User-Agent': 'WebSecAuditor/1.0' } }, (res) => {
+        let d = '';
+        res.on('data', (c) => (d += c));
+        res.on('end', () => {
+          try { resolve(JSON.parse(d)); } catch (e) { resolve(null); }
+        });
+      }).on('error', () => resolve(null));
+    });
+    if (!j || Array.isArray(j) || j.errorCode) continue;
+    const entities = j.entities || [];
+    const firstVcard = (ent) => (ent.vcardArray && ent.vcardArray[1] || []).find((r) => r[0] === 'fn');
+    const names = entities.map((e) => {
+      const fn = firstVcard(e);
+      return fn ? fn[3] : null;
+    }).filter(Boolean);
+    const abuse = entities
+      .filter((e) => (e.roles || []).includes('abuse'))
+      .map((e) => {
+        const vc = e.vcardArray && e.vcardArray[1] || [];
+        const email = vc.find((r) => r[0] === 'email');
+        return email ? email[3] : null;
+      })
+      .filter(Boolean)[0] || '';
+    return {
+      netname: j.name || '',
+      type: j.type || '',
+      country: j.country || '',
+      cidr: ((j.cidr0_cidrs || []).map((c) => c.v4prefix).join(', ')) || '',
+      start: j.startAddress || '',
+      end: j.endAddress || '',
+      org: names.join(', ') || '',
+      abuse,
+      status: (j.status || []).slice(0, 4).join(', '),
+      source: url.split('/')[2],
+    };
+  }
+  return null;
+}
+
+async function getPtr(ip) {
+  const reversed = ip.split('.').reverse().join('.') + '.in-addr.arpa';
+  return dohQuery(reversed, 'PTR');
+}
+
+function ipCveKeyword(geo, rdap) {
+  const words = [];
+  if (geo && geo.org && geo.org !== 'N/A') words.push(geo.org);
+  if (geo && geo.isp && geo.isp !== 'N/A') words.push(geo.isp);
+  if (rdap && rdap.netname) words.push(rdap.netname);
+  return [...new Set(words)];
+}
+
+function queryNvdCves(keyword) {
+  return new Promise((resolve) => {
+    const url = 'https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=' + encodeURIComponent(keyword) + '&resultsPerPage=8';
+    https.get(url, { timeout: 15000, headers: { 'User-Agent': 'WebSecAuditor/1.0' } }, (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          if (!j || !Array.isArray(j.vulnerabilities)) return resolve([]);
+          const out = [];
+          for (const v of j.vulnerabilities) {
+            const cd = v.cve || {};
+            const metrics = cd.metrics || {};
+            const data31 = metrics.cvssMetricV31?.[0]?.cvssData;
+            const data30 = metrics.cvssMetricV30?.[0]?.cvssData;
+            const cv = data31 || data30 || {};
+            const sev = cv.baseSeverity || (cv.baseScore >= 7 ? 'HIGH' : 'MEDIUM');
+            const descs = cd.descriptions || [];
+            out.push({
+              id: cd.id || '',
+              score: cv.baseScore || 0,
+              severity: sev,
+              description: descs.find((x) => x.lang === 'en')?.value?.slice(0, 200) || '',
+            });
+          }
+          resolve(out.sort((a, b) => b.score - a.score));
+        } catch (e) {
+          resolve([]);
+        }
+      });
+    }).on('error', () => resolve([]));
+  });
+}
+
+async function analyzeIp(ip) {
+  const geo = await getIpGeo(ip);
+  const rdap = await getRdapForIp(ip);
+  const ptr = await getPtr(ip);
+  let cves = [];
+  for (const kw of ipCveKeyword(geo, rdap)) {
+    if (kw.length < 3) continue;
+    cves = await queryNvdCves(kw);
+    if (cves.length) break;
+  }
+  return { ip, geo, rdap, ptr, cves };
+}
+
 async function scanTarget(rawUrl) {
   const parsed = normalizeUrl(rawUrl);
   const findings = [];
@@ -1185,5 +1378,16 @@ app.post('/api/report', async (req, res) => {
 });
 
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
+
+app.get('/api/ipintel', async (req, res) => {
+  const ip = (req.query.ip || '').trim();
+  if (!ip || !isPublicIp(ip)) return res.status(400).json({ ok: false, error: 'IP pública válida requerida' });
+  try {
+    const result = await analyzeIp(ip);
+    res.json({ ok: true, intel: result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 app.listen(PORT, () => console.log(`Landing OWASP en http://localhost:${PORT}`));

@@ -67,7 +67,16 @@ El botón **"Escanear mi equipo"** analiza el PC del visitante usando solo lo qu
 
 Incluye consola animada estilo terminal, informe en pantalla, **imprimir/PDF** y **descarga en HTML**.
 
-> Nota: el escaneo de puertos, antivirus, SMB, parches y firewall solo es posible con la versión completa del auditor (no desde el navegador).
+### 🔎 Análisis de la IP pública
+
+Tras detectar tu IP pública, el botón **"Analizar IP pública"** consulta (solo fuentes pasivas, sin escanear puertos):
+
+- **Geolocalización**: país, región, ciudad, coordenadas, ISP, organización y ASN (vía ipwho.is).
+- **Registro de la red (RDAP)**: nombre de red, CIDR, rango IP, titular y contacto de abuso (vía IANA bootstrap + registros RIR).
+- **Dominio inverso (rDNS/PTR)** mediante DNS-over-HTTPS.
+- **CVEs relacionados** con el proveedor/ISP consultados en NVD (se ordenan por CVSS).
+
+> Nota: el escaneo de puertos, antivirus, SMB, parches y firewall solo es posible con la versión completa del auditor (no desde el navegador, y Render no permite escaneo de red).
 
 ## 📄 Informe PDF
 

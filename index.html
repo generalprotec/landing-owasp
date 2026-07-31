@@ -523,6 +523,15 @@
   .pc-item span:first-child { color: var(--text); }
   .pc-item span:last-child { color: var(--muted); }
 
+  .cve-item { background: rgba(18, 26, 51, .5); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .cve-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .cve-head b { color: var(--accent); font-size: .9rem; }
+  .sev-badge { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .sev-badge.critico { background: rgba(255, 92, 92, .18); color: var(--critico); }
+  .sev-badge.alto { background: rgba(255, 159, 67, .18); color: var(--alto); }
+  .sev-badge.medio { background: rgba(255, 205, 66, .15); color: #ffcd42; }
+  .cve-item p { font-size: .82rem; color: var(--muted); line-height: 1.5; }
+
   @media (max-width: 600px) {
     .grid { grid-template-columns: 1fr; }
   }
@@ -1363,6 +1372,10 @@
         pcRow('Velocidad de descarga', d.downlink) +
         pcRow('Latencia (RTT)', d.rtt) +
       '</table>' +
+      (d.ipPublica && d.ipPublica !== 'No disponible'
+        ? '<div style="text-align:center;margin-top:14px"><button class="btn btn-primary" type="button" id="ipIntelBtn" onclick="analyzePublicIp()">🔎 Analizar IP pública</button></div>' +
+          '<div id="ipIntelResults" style="margin-top:14px"></div>'
+        : '') +
       '<div class="pc-warn">El escaneo de puertos, ARP, mDNS, UPnP o recursos compartidos SMB requiere la versión completa del auditor (no es posible solo desde el navegador).</div>');
 
     h += pcSection('🎮', 'Tarjeta gráfica (GPU)',
@@ -1437,6 +1450,66 @@
 
     document.getElementById('pcReportContent').innerHTML = h;
     rep.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function analyzePublicIp() {
+    const ip = (pcData.ipPublica || '').trim();
+    if (!ip || ip === 'No disponible') return;
+    const btn = document.getElementById('ipIntelBtn');
+    const box = document.getElementById('ipIntelResults');
+    btn.disabled = true;
+    btn.textContent = 'Analizando…';
+    box.innerHTML = '<p style="color:var(--muted)">Obteniendo geolocalización, red y CVEs de ' + ip + '…</p>';
+    try {
+      const res = await fetch('/api/ipintel?ip=' + encodeURIComponent(ip));
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Error en el análisis');
+      renderIpIntel(data.intel, box);
+    } catch (err) {
+      box.innerHTML = '<p style="color:var(--critico)">Error: ' + err.message + '</p>';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔎 Analizar IP pública';
+    }
+  }
+
+  function renderIpIntel(t, box) {
+    const g = t.geo;
+    const r = t.rdap;
+    const rows = [];
+    if (g) {
+      rows.push(pcRow('Ubicación', (g.city ? g.city + ', ' : '') + (g.region ? g.region + ', ' : '') + g.country));
+      rows.push(pcRow('Coordenadas', g.lat && g.lon ? g.lat + ', ' + g.lon : '—'));
+      rows.push(pcRow('ISP / Organización', (g.isp || '—') + (g.org && g.org !== g.isp ? ' · ' + g.org : '')));
+      rows.push(pcRow('ASN', g.asn ? 'AS' + g.asn : '—'));
+      rows.push(pcRow('Zona horaria', g.timezone || '—'));
+    }
+    if (r) {
+      rows.push(pcRow('Nombre de red (RDAP)', r.netname || '—'));
+      rows.push(pcRow('Tipo', r.type || '—'));
+      rows.push(pcRow('CIDR', r.cidr || '—'));
+      rows.push(pcRow('Rango IP', (r.start || '—') + ' – ' + (r.end || '—')));
+      rows.push(pcRow('Titular', r.org || '—'));
+      rows.push(pcRow('Abuso (contacto)', r.abuse || '—'));
+      rows.push(pcRow('Registro', r.source || '—'));
+    }
+    if (t.ptr && t.ptr.length) rows.push(pcRow('Dominio (rDNS)', t.ptr.join(', ')));
+
+    let html = '<table class="pc-table">' + rows.join('') + '</table>';
+
+    if (t.cves && t.cves.length) {
+      const items = t.cves.map((c) => {
+        const sevCls = c.severity === 'CRITICAL' ? 'critico' : c.severity === 'HIGH' ? 'alto' : 'medio';
+        return '<div class="cve-item"><div class="cve-head"><b>' + c.id + '</b><span class="sev-badge ' + sevCls + '">' + c.severity + ' · CVSS ' + c.score + '</span></div><p>' + c.description + '</p></div>';
+      }).join('');
+      html += '<h4 style="margin:18px 0 10px;color:var(--accent)">CVEs relacionados con el proveedor</h4><div style="display:grid;gap:10px">' + items + '</div>' +
+        '<p style="color:var(--muted);font-size:.8rem;margin-top:10px">CVEs de NVD relacionados por organización/ISP. No implica que tu dispositivo esté afectado.</p>';
+    } else {
+      html += '<p style="color:var(--muted);font-size:.85rem;margin-top:12px">Sin CVEs públicos relacionados con el proveedor detectado.</p>';
+    }
+
+    box.innerHTML = '<div class="pc-sec">' + html + '</div>';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   function downloadPcReport() {
