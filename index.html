@@ -473,6 +473,57 @@
   .card-findings li::before { content: '• '; color: var(--critico); font-weight: 800; }
   .card-findings li:last-child { border-bottom: none; }
 
+  .pc-console {
+    text-align: left;
+    background: #0a0f1e;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: .82rem;
+    line-height: 1.7;
+    padding: 18px;
+    margin-top: 24px;
+    max-height: 420px;
+    overflow-y: auto;
+    color: #c8d3f5;
+  }
+
+  .pc-console .c-title { color: #22d3ee; font-weight: 700; }
+  .pc-console .c-ok { color: var(--verde); font-weight: 700; }
+  .pc-console .c-line { white-space: pre-wrap; }
+
+  .pc-report { text-align: left; margin-top: 26px; border-top: 1px dashed var(--border); padding-top: 24px; }
+
+  .pc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 22px; }
+
+  .pc-stat { background: rgba(18, 26, 51, .5); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
+  .pc-stat .ic { font-size: 1.3rem; margin-bottom: 6px; }
+  .pc-stat b { display: block; font-size: 1.1rem; }
+  .pc-stat span { font-size: .75rem; color: var(--muted); }
+
+  .pc-sec { background: rgba(18, 26, 51, .45); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+  .pc-sec h3 { font-size: 1.05rem; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+
+  .pc-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .pc-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); word-break: break-word; }
+  .pc-table td:first-child { color: var(--muted); width: 210px; }
+  .pc-table .mono { font-family: Consolas, monospace; }
+
+  .pc-badge { display: inline-block; font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .pc-badge.ok { background: rgba(61, 220, 151, .15); color: var(--verde); }
+  .pc-badge.no { background: rgba(255, 92, 92, .15); color: var(--critico); }
+
+  .pc-chip { display: inline-block; font-size: .78rem; padding: 4px 12px; border-radius: 999px; background: rgba(79, 140, 255, .12); border: 1px solid rgba(79, 140, 255, .3); margin: 3px 4px 3px 0; color: var(--text); }
+
+  .pc-warn { background: rgba(255, 159, 67, .1); border: 1px solid rgba(255, 159, 67, .3); border-radius: 12px; padding: 14px; color: var(--text); font-size: .85rem; margin-bottom: 10px; }
+
+  .pc-bar { width: 100%; background: var(--border); border-radius: 99px; height: 8px; overflow: hidden; margin-top: 8px; }
+  .pc-bar > div { height: 100%; background: var(--verde); }
+
+  .pc-item { display: flex; justify-content: space-between; background: rgba(18, 26, 51, .4); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 6px; font-size: .85rem; }
+  .pc-item span:first-child { color: var(--text); }
+  .pc-item span:last-child { color: var(--muted); }
+
   @media (max-width: 600px) {
     .grid { grid-template-columns: 1fr; }
   }
@@ -492,6 +543,7 @@
   <div class="cta-row">
     <a class="btn btn-primary" href="#riesgos">Ver los 10 riesgos</a>
     <a class="btn btn-ghost" href="#proceso">Cómo se analiza</a>
+    <a class="btn btn-ghost" href="#escaneo-pc">🖥️ Escanear mi equipo</a>
   </div>
 </section>
 
@@ -606,6 +658,23 @@
       <div class="card-findings" data-cat="A10"></div>
     </article>
 
+  </div>
+</section>
+
+<section id="escaneo-pc" class="wrap">
+  <div class="scanner">
+    <h2>🖥️ ¿Quieres auditar tu propio equipo?</h2>
+    <p>Escanea el PC desde el que estás navegando: sistema, red, GPU, dispositivos, APIs y exposición web. Solo usa lo que tu navegador expone; no instala nada.</p>
+    <button class="btn btn-primary" id="pcScanBtn" onclick="startPcAudit()">▶ Iniciar auditoría del equipo</button>
+    <div class="pc-console" id="pcConsole" style="display:none"></div>
+    <div class="pc-report" id="pcReport" style="display:none">
+      <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:22px">
+        <button class="btn btn-ghost" onclick="window.print()">🖨️ Imprimir / PDF</button>
+        <button class="btn btn-ghost" onclick="downloadPcReport()">⬇️ Descargar HTML</button>
+        <button class="btn btn-ghost" onclick="window.scrollTo({top:0,behavior:'smooth'})">⬆️ Inicio</button>
+      </div>
+      <div id="pcReportContent"></div>
+    </div>
   </div>
 </section>
 
@@ -1000,6 +1069,387 @@
       companyBtn.textContent = '🏢 Analizar la empresa';
     }
   });
+
+  /* ================= ESCÁNER DEL EQUIPO (navegador) ================= */
+  let pcData = {};
+
+  function pcLine(label, status, cls) {
+    return '<div class="c-line"><span style="color:#d4d4d4">' + label + '</span><span class="' + (cls || 'c-ok') + '">' + (status || '') + '</span></div>';
+  }
+
+  function writePcLines(lines, i, onDone) {
+    if (i >= lines.length) { onDone(); return; }
+    setTimeout(() => {
+      const c = document.getElementById('pcConsole');
+      c.insertAdjacentHTML('beforeend', lines[i].html);
+      c.scrollTop = c.scrollHeight;
+      writePcLines(lines, i + 1, onDone);
+    }, lines[i].delay);
+  }
+
+  async function startPcAudit() {
+    document.getElementById('pcScanBtn').style.display = 'none';
+    const c = document.getElementById('pcConsole');
+    c.style.display = 'block';
+    c.innerHTML = '<div class="c-line c-title">=== Auditor de equipo (navegador) ===</div>';
+    const data = await collectPcData();
+
+    const L = [];
+    const ok = (l) => L.push({ html: pcLine('  ' + l + '... ', 'OK'), delay: 120 + Math.random() * 220 });
+    const head = (l) => L.push({ html: pcLine(l, ''), delay: 150 });
+    const warn = (l, s) => L.push({ html: pcLine('  ' + l + '... ', s, 'c-ok'), delay: 130 + Math.random() * 220 });
+
+    head('=== Auditor de equipo (navegador) ===');
+    ok('Sistema / Navegador');
+    ok('CPU / RAM');
+    ok('GPU');
+    ok('Red local');
+    warn('IP pública', data.ipPublica);
+    ok('Dispositivos multimedia');
+    ok('Fuentes instaladas (' + data.fuentes.length + ')');
+    ok('APIs soportadas');
+    ok('Preferencias / pantalla');
+    ok('Batería');
+    ok('Analizando exposición web');
+    ok('Generando informe');
+    L.push({ html: pcLine('', ''), delay: 300 });
+    L.push({ html: '<div class="c-line c-title">========================================</div>', delay: 200 });
+    L.push({ html: pcLine(' INFORME GENERADO CORRECTAMENTE', ''), delay: 300 });
+    L.push({ html: '<div class="c-line c-title">========================================</div>', delay: 200 });
+
+    writePcLines(L, 0, () => setTimeout(() => renderPcReport(data), 500));
+  }
+
+  async function collectPcData() {
+    const d = {};
+    d.timestamp = new Date().toLocaleString('es-ES');
+    const ua = navigator.userAgent;
+    const uap = parsePcUA(ua);
+    d.navegador = uap.browser + ' ' + uap.version;
+    d.os = uap.os;
+    d.arch = uap.arch;
+    d.modelo = uap.model;
+    d.cpuCores = navigator.hardwareConcurrency || '?';
+    d.ramGB = navigator.deviceMemory ? navigator.deviceMemory + ' GB' : '?';
+    d.screen = screen.width + 'x' + screen.height;
+    d.colorDepth = screen.colorDepth + ' bits';
+    d.lenguaje = navigator.language;
+    d.tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'No detectada';
+    d.ipLocal = (await getPcLocalIPs()).join(', ');
+    d.ipPublica = await getPcPublicIP();
+    const gl = getPcGPU();
+    d.gpu = gl.renderer;
+    d.gpuVendor = gl.vendor;
+    const net = getPcNetwork();
+    d.netType = net ? net.type : 'No detectada';
+    d.downlink = net ? net.downlink : 'N/A';
+    d.rtt = net ? net.rtt : 'N/A';
+    d.battery = await getPcBattery();
+    d.fuentes = detectPcFonts();
+    d.mediaDevices = await getPcMediaDevices();
+    d.fingerprint = pcCanvasFingerprint();
+    d.soporte = detectPcAPIs();
+    d.preferencias = getPcPrefs();
+    d.secureContext = window.isSecureContext;
+    return d;
+  }
+
+  function parsePcUA(ua) {
+    const data = { browser: '?', version: '', os: 'Desconocido', arch: 'Desconocida', model: '' };
+    const browsers = [
+      { name: 'Edge', pat: /Edg\/([\d.]+)/ },
+      { name: 'Chrome', pat: /Chrome\/([\d.]+)/ },
+      { name: 'Firefox', pat: /Firefox\/([\d.]+)/ },
+      { name: 'Safari', pat: /Version\/([\d.]+).*Safari/ },
+      { name: 'Opera', pat: /(?:OPR|Opera)\/([\d.]+)/ },
+    ];
+    for (const b of browsers) {
+      const m = ua.match(b.pat);
+      if (m) { data.browser = b.name; data.version = m[1]; break; }
+    }
+    if (/Windows NT 10.0/.test(ua)) data.os = 'Windows 10/11';
+    else if (/Windows NT 6.3/.test(ua)) data.os = 'Windows 8.1';
+    else if (/Windows NT 6.1/.test(ua)) data.os = 'Windows 7';
+    else if (/Mac OS X/.test(ua)) data.os = 'macOS';
+    else if (/Android/.test(ua)) data.os = 'Android';
+    else if (/iPhone|iPad|iPod/.test(ua)) data.os = 'iOS';
+    else if (/Linux/.test(ua)) data.os = 'Linux';
+    if (/x86_64|Win64|amd64/.test(ua)) data.arch = 'x86-64';
+    else if (/x86_32|i686|i386/.test(ua)) data.arch = 'x86-32';
+    else if (/ARM64|aarch64/.test(ua)) data.arch = 'ARM64';
+    if (/Macintosh/.test(ua)) data.model = 'Mac';
+    else if (/CrOS/.test(ua)) data.model = 'Chromebook';
+    return data;
+  }
+
+  function getPcLocalIPs() {
+    return new Promise((resolve) => {
+      const ips = [];
+      try {
+        const pc = new RTCPeerConnection({ iceServers: [] });
+        pc.createDataChannel('');
+        pc.createOffer().then((o) => pc.setLocalDescription(o)).catch(() => {});
+        pc.onicecandidate = (e) => {
+          if (!e.candidate) { pc.close(); resolve(ips.length ? ips : ['No detectada']); return; }
+          const m = (e.candidate.candidate || '').match(/(?:udp|tcp) ([0-9.]+)/);
+          if (m && m[1] && !ips.includes(m[1])) ips.push(m[1]);
+        };
+        setTimeout(() => { pc.close(); resolve(ips.length ? ips : ['No detectada']); }, 1500);
+      } catch (e) { resolve(['No disponible']); }
+    });
+  }
+
+  async function getPcPublicIP() {
+    for (const url of ['https://api.ipify.org?format=json', 'https://api.ipify.org']) {
+      try {
+        const r = await fetch(url);
+        const t = await r.text();
+        try { return JSON.parse(t).ip; } catch (e) { return t.trim(); }
+      } catch (e) {}
+    }
+    return 'No disponible';
+  }
+
+  function getPcGPU() {
+    try {
+      const gl = document.createElement('canvas').getContext('webgl');
+      if (gl) {
+        const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+        return {
+          renderer: dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
+          vendor: dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : 'Desconocido',
+        };
+      }
+    } catch (e) {}
+    return { renderer: 'No soporta WebGL', vendor: 'N/A' };
+  }
+
+  function getPcNetwork() {
+    if (navigator.connection) {
+      const c = navigator.connection;
+      return { type: c.effectiveType || c.type || 'Desconocida', downlink: c.downlink + ' Mbps', rtt: c.rtt + ' ms' };
+    }
+    return null;
+  }
+
+  async function getPcBattery() {
+    try {
+      if (navigator.getBattery) {
+        const b = await navigator.getBattery();
+        return { level: Math.round(b.level * 100) + '%', charging: b.charging };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function detectPcFonts() {
+    const fonts = ['Arial', 'Verdana', 'Tahoma', 'Times New Roman', 'Courier New', 'Georgia', 'Segoe UI', 'Calibri', 'Consolas', 'Cambria', 'Comic Sans MS', 'Impact'];
+    const base = document.createElement('span');
+    base.style.cssText = 'position:absolute;visibility:hidden;font-family:"monospace";font-size:72px;';
+    base.textContent = 'mmmmmmmmmmlli';
+    document.body.appendChild(base);
+    const w = base.offsetWidth;
+    const inst = [];
+    for (const f of fonts) {
+      const s = document.createElement('span');
+      s.style.cssText = 'position:absolute;visibility:hidden;font-size:72px;font-family:"' + f + ',monospace";';
+      s.textContent = 'mmmmmmmmmmlli';
+      document.body.appendChild(s);
+      if (s.offsetWidth !== w) inst.push(f);
+      document.body.removeChild(s);
+    }
+    document.body.removeChild(base);
+    return inst;
+  }
+
+  async function getPcMediaDevices() {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        const devs = await navigator.mediaDevices.enumerateDevices();
+        return devs.map((x) => ({ kind: x.kind, label: x.label || '(permiso no otorgado)' }));
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  function pcCanvasFingerprint() {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 220;
+      canvas.height = 30;
+      const ctx = canvas.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#f60';
+      ctx.fillRect(0, 0, 220, 30);
+      ctx.fillStyle = '#069';
+      ctx.fillText('WebSecAuditorFP', 2, 2);
+      return canvas.toDataURL().length + ' px';
+    } catch (e) { return 'No disponible'; }
+  }
+
+  function detectPcAPIs() {
+    const tryCtx = (id) => { try { return !!document.createElement('canvas').getContext(id); } catch (e) { return false; } };
+    return {
+      webgl2: tryCtx('webgl2'),
+      webgpu: 'gpu' in navigator,
+      wasm: typeof WebAssembly !== 'undefined',
+      serviceWorker: 'serviceWorker' in navigator,
+      webAuthn: 'credentials' in navigator && !!window.PublicKeyCredential,
+      bluetooth: 'bluetooth' in navigator,
+      usb: 'usb' in navigator,
+      serial: 'serial' in navigator,
+      gamepad: 'getGamepads' in navigator,
+      vibrate: 'vibrate' in navigator,
+      fullscreen: 'fullscreenElement' in document,
+      clipboard: 'clipboard' in navigator,
+    };
+  }
+
+  function getPcPrefs() {
+    const m = window.matchMedia;
+    return {
+      colorScheme: m ? (m('(prefers-color-scheme: dark)').matches ? 'Oscuro' : 'Claro') : 'N/A',
+      reducedMotion: m ? (m('(prefers-reduced-motion: reduce)').matches ? 'Sí' : 'No') : 'N/A',
+      dpr: window.devicePixelRatio || 1,
+      maxTouch: 'ontouchstart' in window ? (navigator.maxTouchPoints || 'Sí') : 'No',
+    };
+  }
+
+  function pcRow(label, value, mono) {
+    return '<tr><td>' + label + '</td><td class="' + (mono ? 'mono' : '') + '">' + (value == null || value === '' ? '—' : value) + '</td></tr>';
+  }
+
+  function pcSection(icon, title, body) {
+    return '<div class="pc-sec"><h3>' + icon + ' ' + title + '</h3>' + body + '</div>';
+  }
+
+  function renderPcReport(d) {
+    pcData = d;
+    document.getElementById('pcConsole').style.display = 'none';
+    const rep = document.getElementById('pcReport');
+    rep.style.display = 'block';
+    let h = '';
+
+    const stats =
+      '<div class="pc-stats">' +
+        '<div class="pc-stat"><div class="ic">💻</div><b>' + d.cpuCores + '</b><span>Núcleos CPU</span></div>' +
+        '<div class="pc-stat"><div class="ic">🧠</div><b>' + d.ramGB + '</b><span>RAM estimada</span></div>' +
+        '<div class="pc-stat"><div class="ic">🖥️</div><b>' + (d.screen || '—') + '</b><span>Pantalla</span></div>' +
+        '<div class="pc-stat"><div class="ic">🌐</div><b>' + (d.ipPublica.length > 14 ? d.ipPublica.slice(0, 14) + '…' : d.ipPublica) + '</b><span>IP pública</span></div>' +
+      '</div>';
+
+    h += pcSection('ℹ️', 'Información del sistema', stats +
+      '<table class="pc-table">' +
+        pcRow('Sistema Operativo', d.os) +
+        pcRow('Navegador', d.navegador) +
+        pcRow('Arquitectura', d.arch) +
+        pcRow('Modelo', d.modelo) +
+        pcRow('Idioma', d.lenguaje) +
+        pcRow('Zona horaria', d.tz) +
+        pcRow('Fecha auditoría', d.timestamp) +
+      '</table>');
+
+    h += pcSection('🌐', 'Red y conectividad',
+      '<table class="pc-table">' +
+        pcRow('IP local', d.ipLocal) +
+        pcRow('IP pública', d.ipPublica) +
+        pcRow('Tipo de conexión', d.netType) +
+        pcRow('Velocidad de descarga', d.downlink) +
+        pcRow('Latencia (RTT)', d.rtt) +
+      '</table>' +
+      '<div class="pc-warn">El escaneo de puertos, ARP, mDNS, UPnP o recursos compartidos SMB requiere la versión completa del auditor (no es posible solo desde el navegador).</div>');
+
+    h += pcSection('🎮', 'Tarjeta gráfica (GPU)',
+      '<table class="pc-table">' +
+        pcRow('Renderizador', d.gpu) +
+        pcRow('Fabricante', d.gpuVendor) +
+        pcRow('WebGL2', d.soporte.webgl2 ? '<span class="pc-badge ok">✓ Soportado</span>' : '<span class="pc-badge no">✗ No</span>') +
+        pcRow('WebGPU', d.soporte.webgpu ? '<span class="pc-badge ok">✓ Soportado</span>' : '<span class="pc-badge no">✗ No</span>') +
+      '</table>');
+
+    let med = '';
+    if (d.mediaDevices && d.mediaDevices.length) {
+      med = d.mediaDevices.map((dev) => {
+        const ic = dev.kind === 'videoinput' ? '📷' : dev.kind === 'audioinput' ? '🎤' : '🔊';
+        return '<div class="pc-item"><span>' + ic + ' ' + dev.label + '</span><span>' + (dev.kind === 'videoinput' ? 'Cámara' : dev.kind === 'audioinput' ? 'Micrófono' : 'Altavoz') + '</span></div>';
+      }).join('');
+    } else {
+      med = '<p style="color:var(--muted);font-size:.85rem">No se detectaron dispositivos multimedia (o se requieren permisos de cámara/micrófono).</p>';
+    }
+    h += pcSection('🔌', 'Dispositivos multimedia', med);
+
+    const secChecks = [
+      { name: 'Conexión segura (HTTPS)', ok: d.secureContext },
+      { name: 'Huella Canvas', ok: d.fingerprint !== 'No disponible' },
+      { name: 'Cookies habilitadas', ok: navigator.cookieEnabled },
+      { name: 'WebAuthn / Passkeys', ok: d.soporte.webAuthn },
+    ];
+    let secHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">';
+    for (const c of secChecks) {
+      secHtml += '<div class="pc-sec" style="margin-bottom:0"><p style="font-size:.8rem;color:var(--muted)">' + c.name + '</p><p style="margin-top:6px">' +
+        (c.ok ? '<span class="pc-badge ok">✓ OK</span>' : '<span class="pc-badge no">✗ No</span>') + '</p></div>';
+    }
+    secHtml += '</div>';
+    h += pcSection('🛡️', 'Seguridad del navegador', secHtml +
+      '<div class="pc-warn" style="margin-top:12px">Antivirus, Windows Defender, UAC, BitLocker, parches y firewall solo se auditan con la versión completa del escáner.</div>');
+
+    h += pcSection('🐞', 'Análisis de exposición web',
+      '<div class="pc-warn"><b>⚠️ Tu navegador expone:</b> huella canvas de ' + d.fingerprint + ' y tu IP pública ' + d.ipPublica + '. Esas son las señales que usan los sistemas de rastreo para identificarte.</div>' +
+      '<div style="background:rgba(61,220,151,.1);border:1px solid rgba(61,220,151,.3);border-radius:12px;padding:14px;font-size:.85rem">La auditoría de vulnerabilidades del sistema (SMB, LLMNR, TLS, parches, cuentas) requiere la versión completa.</div>');
+
+    const apiList = [
+      ['WebAssembly', d.soporte.wasm], ['Service Worker', d.soporte.serviceWorker], ['WebAuthn / Passkeys', d.soporte.webAuthn],
+      ['Web Bluetooth', d.soporte.bluetooth], ['Web USB', d.soporte.usb], ['Web Serial', d.soporte.serial],
+      ['Gamepad API', d.soporte.gamepad], ['Vibrate', d.soporte.vibrate], ['Fullscreen', d.soporte.fullscreen], ['Clipboard API', d.soporte.clipboard],
+    ];
+    h += pcSection('🧩', 'APIs del navegador soportadas',
+      apiList.map((a) => '<div class="pc-item"><span>' + a[0] + '</span><span>' + (a[1] ? '<span class="pc-badge ok">✓ Soportado</span>' : '<span class="pc-badge no">✗ No</span>') + '</span></div>').join(''));
+
+    h += pcSection('🎨', 'Pantalla y preferencias',
+      '<table class="pc-table">' +
+        pcRow('Resolución', d.screen) +
+        pcRow('Profundidad de color', d.colorDepth) +
+        pcRow('Pixel Ratio', d.preferencias.dpr) +
+        pcRow('Tema preferido', d.preferencias.colorScheme) +
+        pcRow('Reducir movimiento', d.preferencias.reducedMotion) +
+        pcRow('Pantalla táctil', d.preferencias.maxTouch) +
+      '</table>');
+
+    h += pcSection('🔤', 'Fuentes instaladas (' + d.fuentes.length + ')',
+      d.fuentes.length ? '<div>' + d.fuentes.map((f) => '<span class="pc-chip">' + f + '</span>').join('') + '</div>' : '<p style="color:var(--muted);font-size:.85rem">Solo fuentes básicas detectadas.</p>');
+
+    let batHtml;
+    if (d.battery) {
+      const pct = parseInt(d.battery.level) || 0;
+      batHtml = '<p style="font-size:1.4rem;font-weight:800;color:' + (d.battery.charging ? 'var(--verde)' : 'var(--alto)') + '">' + d.battery.level + '</p>' +
+        '<p style="color:var(--muted);font-size:.8rem">' + (d.battery.charging ? '⚡ Cargando' : 'En descarga') + '</p>' +
+        '<div class="pc-bar"><div style="width:' + pct + '%"></div></div>';
+    } else {
+      batHtml = '<p style="color:var(--muted);font-size:.85rem">No disponible (solo aplica a portátiles).</p>';
+    }
+    h += pcSection('🔋', 'Batería', batHtml);
+
+    document.getElementById('pcReportContent').innerHTML = h;
+    rep.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function downloadPcReport() {
+    const content = document.getElementById('pcReportContent').innerHTML;
+    const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>WebSecAuditor - Reporte de equipo</title>' +
+      '<style>body{font-family:Segoe UI,system-ui,sans-serif;background:#0f172a;color:#e6ecff;max-width:900px;margin:auto;padding:24px}' +
+      'table{width:100%;border-collapse:collapse;font-size:14px}td{padding:8px 10px;border-bottom:1px solid #334155;color:#e6ecff}td:first-child{color:#94a3b8;width:210px}' +
+      '.sec{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:18px;margin-bottom:14px}h2{color:#4f8cff}' +
+      '.chip{display:inline-block;background:#1e3a8a;padding:4px 10px;border-radius:99px;margin:3px;font-size:12px}.warn{background:#78350f;padding:12px;border-radius:10px;font-size:13px}' +
+      '.stat{display:inline-block;background:#1e293b;border-radius:12px;padding:14px;text-align:center;margin:6px;min-width:120px}.stat b{display:block;font-size:20px}' +
+      '.ok{color:#3ddc97}.no{color:#ff5c5c}</style></head><body>' + content + '</body></html>';
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Reporte_Equipo_' + new Date().toISOString().slice(0, 10) + '.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 </script>
 
 </body>

@@ -54,6 +54,21 @@ El botón **"Superficie de ataque"** analiza lo que vería un atacante antes de 
 - **Patrón de emails**: deduce si los correos siguen el patrón nombre.apellido (para prever phishing).
 - **Certificado TLS**: emisor, validez, días restantes y SANs.
 
+## 🖥️ Auditoría del equipo (navegador)
+
+El botón **"Escanear mi equipo"** analiza el PC del visitante usando solo lo que el navegador expone (no instala nada):
+
+- Sistema, navegador, arquitectura, idioma y zona horaria.
+- CPU (núcleos), RAM estimada, pantalla y GPU (WebGL).
+- Red: IP local y pública, tipo de conexión, velocidad y latencia.
+- Dispositivos multimedia (cámara, micrófono, altavoces), fuentes instaladas y batería.
+- APIs soportadas (WebAuthn, WebUSB, WebSerial, Bluetooth, etc.) y preferencias.
+- Análisis de exposición web (huella canvas, IP pública).
+
+Incluye consola animada estilo terminal, informe en pantalla, **imprimir/PDF** y **descarga en HTML**.
+
+> Nota: el escaneo de puertos, antivirus, SMB, parches y firewall solo es posible con la versión completa del auditor (no desde el navegador).
+
 ## 📄 Informe PDF
 
 El botón **"Descargar informe"** genera un PDF con todos los resultados del análisis:
