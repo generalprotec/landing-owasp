@@ -718,6 +718,7 @@
       <div style="text-align:center; margin-top:22px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap">
         <button class="btn btn-ghost" type="button" id="companyBtn">🏢 Analizar la empresa</button>
         <button class="btn btn-ghost" type="button" id="osintBtn">🎯 Superficie de ataque</button>
+        <button class="btn btn-ghost" type="button" id="pcQuickBtn">🖥️ ¿Quieres auditar tu propio equipo?</button>
         <button class="btn btn-primary" type="button" id="reportBtn">📄 Descargar informe</button>
       </div>
       <div class="company" id="companyResults"></div>
@@ -1068,6 +1069,11 @@
       companyBtn.disabled = false;
       companyBtn.textContent = '🏢 Analizar la empresa';
     }
+  });
+
+  document.getElementById('pcQuickBtn').addEventListener('click', () => {
+    document.getElementById('escaneo-pc').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(startPcAudit, 500);
   });
 
   /* ================= ESCÁNER DEL EQUIPO (navegador) ================= */
