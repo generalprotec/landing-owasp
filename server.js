@@ -4,8 +4,10 @@ const http = require('node:http');
 const https = require('node:https');
 const tls = require('node:tls');
 const dns = require('node:dns').promises;
+const { generateReport } = require('./report');
 
 const app = express();
+app.use(express.json({ limit: '2mb' }));
 const PORT = process.env.PORT || 4000;
 const TIMEOUT = 12000;
 
@@ -747,6 +749,20 @@ app.get('/api/osint', async (req, res) => {
     res.json({ ok: true, surface });
   } catch (e) {
     res.status(400).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/report', async (req, res) => {
+  const { url, scan, company, surface } = req.body || {};
+  if (!url) return res.status(400).json({ ok: false, error: 'Falta la URL del objetivo' });
+  try {
+    const buf = await generateReport({ url, scan, company, surface });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="informe-seguridad-' + Date.now() + '.pdf"');
+    res.send(buf);
+  } catch (e) {
+    console.error('Report error:', e);
+    res.status(500).json({ ok: false, error: 'Error al generar el PDF: ' + e.message });
   }
 });
 

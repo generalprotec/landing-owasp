@@ -649,6 +649,7 @@
       <div style="text-align:center; margin-top:22px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap">
         <button class="btn btn-ghost" type="button" id="companyBtn">🏢 Analizar la empresa</button>
         <button class="btn btn-ghost" type="button" id="osintBtn">🎯 Superficie de ataque</button>
+        <button class="btn btn-primary" type="button" id="reportBtn">📄 Descargar informe</button>
       </div>
       <div class="company" id="companyResults"></div>
       <div class="company" id="osintResults"></div>
@@ -757,6 +758,7 @@
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Error en el análisis');
 
+      lastScan = data;
       results.classList.add('visible');
       resultTarget.innerHTML = data.url + '<small>HTTP ' + data.meta.httpStatus + ' · ' + (data.meta.contentType || '') + '</small>';
       scoreVal.textContent = data.score + '';
@@ -846,6 +848,7 @@
       const res = await fetch('/api/osint?url=' + encodeURIComponent(url));
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Error en el análisis');
+      lastSurface = data.surface;
       renderOsint(data.surface);
       box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {
@@ -853,6 +856,46 @@
     } finally {
       osintBtn.disabled = false;
       osintBtn.textContent = '🎯 Superficie de ataque';
+    }
+  });
+
+  let lastScan = null;
+  let lastCompany = null;
+  let lastSurface = null;
+
+  const reportBtn = document.getElementById('reportBtn');
+  reportBtn.addEventListener('click', async () => {
+    const url = input.value.trim();
+    if (!url) { input.focus(); return; }
+    if (!lastScan && !lastCompany && !lastSurface) {
+      alert('Primero analiza la web (botón Analizar) para poder generar el informe.');
+      return;
+    }
+    reportBtn.disabled = true;
+    reportBtn.textContent = 'Generando PDF…';
+    try {
+      const res = await fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, scan: lastScan, company: lastCompany, surface: lastSurface }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al generar el informe');
+      }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'informe-seguridad-' + url.replace(/[^a-zA-Z0-9.-]/g, '_') + '.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      alert('Error al generar el informe: ' + err.message);
+    } finally {
+      reportBtn.disabled = false;
+      reportBtn.textContent = '📄 Descargar informe';
     }
   });
 
@@ -869,6 +912,7 @@
       const res = await fetch('/api/company?url=' + encodeURIComponent(url));
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Error en el análisis');
+      lastCompany = data.company;
       renderCompany(data.company);
       box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {

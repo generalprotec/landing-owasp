@@ -47,6 +47,18 @@ El botón **"Superficie de ataque"** analiza lo que vería un atacante antes de 
 - **Certificado TLS**: emisor, validez, días restantes y SANs.
 - **Brechas**: comprueba los emails del dominio en el API de filtraciones (xposedornot).
 
+## 📄 Informe PDF
+
+El botón **"Descargar informe"** genera un PDF con todos los resultados del análisis:
+
+- Resumen con puntuación de seguridad y recuento por severidad.
+- Hallazgos de seguridad con categoría OWASP y severidad.
+- Perfil de la empresa (sector, contacto, redes sociales).
+- Superficie de ataque (SPF/DMARC/DKIM, rutas sensibles, subdominios, TLS, brechas).
+- Recomendaciones generales de remediación.
+
+El PDF se genera en el servidor con `pdfkit` (`POST /api/report`).
+
 ## 🚀 Puesta en marcha
 
 ### Local
@@ -65,9 +77,10 @@ npm start
 ## 🌐 API
 
 ```
-GET /api/scan?url=tudominio.com
-GET /api/company?url=tudominio.com
-GET /api/osint?url=tudominio.com
+GET  /api/scan?url=tudominio.com
+GET  /api/company?url=tudominio.com
+GET  /api/osint?url=tudominio.com
+POST /api/report      # body: { url, scan?, company?, surface? } -> application/pdf
 ```
 
 Respuesta de `/api/scan`:
