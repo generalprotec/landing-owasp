@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Análisis de Seguridad Web — OWASP Top 10</title>
+<title>Generalprotec CiberAudit — Escáner de su empresa</title>
 <style>
   :root {
     --bg: #0b1020;
@@ -51,9 +51,8 @@
   .brand .logo {
     width: 40px; height: 40px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    display: grid; place-items: center;
-    font-size: 1.2rem;
+    object-fit: cover;
+    display: block;
   }
 
   .pill {
@@ -532,13 +531,13 @@
 <body>
 
 <header class="wrap">
-  <div class="brand"><span class="logo">🛡️</span> WebSec Auditor</div>
-  <span class="pill">Basado en OWASP Top 10 · 2021</span>
+  <div class="brand"><img class="logo" src="logo.jpg" alt="Generalprotec CiberAudit"> Generalprotec CiberAudit</div>
+  <span class="pill">Escáner de seguridad web</span>
 </header>
 
 <section class="hero wrap">
-  <span class="tag">Análisis de vulnerabilidades</span>
-  <h1>Auditoría de seguridad web con el estándar <span>OWASP Top 10</span></h1>
+  <span class="tag">Escáner de seguridad web</span>
+  <h1>Escáner de <span>su empresa</span> con el estándar OWASP Top 10</h1>
   <p>Detectamos las amenazas más críticas que ponen en riesgo tu web: accesos indebidos, inyecciones, datos expuestos y más. Un análisis claro de cada riesgo y cómo protegerse.</p>
   <div class="cta-row">
     <a class="btn btn-primary" href="#riesgos">Ver los 10 riesgos</a>
