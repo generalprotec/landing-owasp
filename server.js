@@ -481,12 +481,28 @@ async function lookupHost(name) {
   }
 }
 
+function dohQuery(name, type) {
+  return new Promise((resolve) => {
+    const url = 'https://cloudflare-dns.com/dns-query?name=' + encodeURIComponent(name) + '&type=' + type;
+    const req = https.get(url, { timeout: 8000, headers: { accept: 'application/dns-json' } }, (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          resolve(Array.isArray(j.Answer) ? j.Answer.map((a) => String(a.data).replace(/^"(.*)"$/, '$1')) : []);
+        } catch (e) {
+          resolve([]);
+        }
+      });
+    });
+    req.on('error', () => resolve([]));
+    req.on('timeout', () => { req.destroy(); resolve([]); });
+  });
+}
+
 async function getTxtRecords(name) {
-  try {
-    return (await dns.resolveTxt(name)).map((r) => r.join(''));
-  } catch (e) {
-    return [];
-  }
+  return dohQuery(name, 'TXT');
 }
 
 const COMMON_SUBDOMAINS = [
@@ -673,47 +689,189 @@ function checkBreach(email) {
   });
 }
 
+const RDAP_REGISTRIES = {
+  com: 'https://rdap.verisign.com/com/v1/domain/',
+  net: 'https://rdap.verisign.com/net/v1/domain/',
+  org: 'https://rdap.publicinterestregistry.org/rdap/domain/',
+  es: 'https://rdap.nic.es/domain/',
+  info: 'https://rdap.afilias.info/rdap/domain/',
+  io: 'https://rdap.identitydigital.services/rdap/domain/',
+  cat: 'https://rdap.nic.cat/domain/',
+  eu: 'https://rdap.eu/domain/',
+};
+
+function parseRdap(j) {
+  if (!j || Array.isArray(j) || j.errorCode) return null;
+  const events = j.events || [];
+  const findEvent = (type) => {
+    const e = events.find((x) => (x.eventAction || '').toLowerCase() === type);
+    return e ? e.eventDate : null;
+  };
+  return {
+    registrar: (j.entities || []).map((e) => {
+      if (!e.vcardArray || !e.vcardArray[1]) return null;
+      const fn = e.vcardArray[1].find((r) => r[0] === 'fn');
+      return fn ? fn[3] : null;
+    }).filter(Boolean).join(', ') || '—',
+    created: findEvent('registration'),
+    updated: findEvent('last changed'),
+    expiration: findEvent('expiration'),
+    status: (j.status || []).slice(0, 6).join(', '),
+  };
+}
+
+function getRdap(domain) {
+  return new Promise((resolve) => {
+    const tld = domain.split('.').pop();
+    const base = RDAP_REGISTRIES[tld] || 'https://rdap.org/domain/';
+    const req = https.get(base + encodeURIComponent(domain), { timeout: 10000, headers: { 'User-Agent': 'WebSecAuditor/1.0' } }, (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          resolve(parseRdap(j));
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+function extractEmailDomains(html) {
+  const set = new Set();
+  const re = /[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+  let m;
+  while ((m = re.exec(html))) {
+    const d = m[1].toLowerCase().replace(/^www\./, '');
+    if (!/\.(png|jpg|jpeg|gif|svg|webp|css|js|woff|ttf)$/i.test(d) && set.size < 10) set.add(d);
+  }
+  return [...set];
+}
+
+async function getMxNs(domain) {
+  const [mxAns, nsAns] = await Promise.all([dohQuery(domain, 'MX'), dohQuery(domain, 'NS')]);
+  const mx = mxAns.map((v) => v.split(/\s+/).pop().replace(/\.$/, '')).filter(Boolean);
+  const ns = nsAns.map((v) => v.replace(/\.$/, '')).filter(Boolean).slice(0, 5);
+  return { mx, ns };
+}
+
+function detectEmailProvider(mx) {
+  if (!mx.length) return 'Sin registros MX (no usa email en este dominio)';
+  const joined = mx.join(' ');
+  if (/google\.com|googlemail/i.test(joined)) return 'Google Workspace';
+  if (/outlook\.com|microsoft\.com|protection\.outlook/i.test(joined)) return 'Microsoft 365';
+  if (/amazonaws|amazonses|amazon\.com/i.test(joined)) return 'AWS SES / Amazon';
+  if (/zoho/i.test(joined)) return 'Zoho';
+  if (/mailgun|mailchimp|sendgrid/i.test(joined)) return 'Servicio de email transaccional';
+  const host = mx[0].replace(/^[a-z0-9]+\./, '');
+  return 'Servidor propio / ' + host;
+}
+
+function baseDomain(host) {
+  const parts = host.replace(/^www\./, '').split('.');
+  return parts.length > 2 ? parts.slice(-2).join('.') : host;
+}
+
 async function analyzeAttackSurface(rawUrl) {
   const parsed = normalizeUrl(rawUrl);
   const domain = parsed.hostname.replace(/^www\./, '');
   const findings = [];
   const surface = { domain };
 
-  const [subdomains, exposed, ssl] = await Promise.all([
+  const [subdomains, exposed, ssl, mxns] = await Promise.all([
     scanSubdomains(domain, findings),
     probeSensitivePaths(parsed, findings),
     getSslInfo(parsed.hostname),
+    getMxNs(domain),
   ]);
 
   surface.subdomains = subdomains;
   surface.exposed = exposed;
+  surface.mx = mxns.mx;
+  surface.ns = mxns.ns;
+  surface.emailProvider = detectEmailProvider(mxns.mx);
   checkSsl(ssl, findings);
   surface.ssl = ssl;
 
-  try {
-    surface.emailProtection = await checkEmailProtection(domain, findings);
-  } catch (e) {
-    surface.emailProtection = null;
+  if (mxns.mx.length) {
+    const mxBase = baseDomain(mxns.mx[0]);
+    if (!/google|microsoft|outlook|zoho|amazonaws|amazonses|mailgun|sendgrid/i.test(mxns.mx.join(' '))) {
+      findings.push({
+        cat: 'A05',
+        title: 'Email gestionado en infraestructura propia',
+        sev: 'bajo',
+        desc: 'Los registros MX apuntan a servidores propios (' + mxBase + '). El atacante intentará atacar el servidor de correo directamente.',
+      });
+    }
   }
 
+  /* Dominios relacionados: desde emails de la web y del registro MX */
+  let emails = [];
   try {
-    const emails = await (async () => {
-      const home = await fetchPage(parsed, '/');
-      if (!home) return [];
+    const home = await fetchPage(parsed, '/');
+    if (home) {
       const html = home.body;
       const set = new Set();
       const re = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
       let m;
       while ((m = re.exec(html))) {
         const e = m[0].toLowerCase();
-        if (/\.(png|jpg|jpeg|gif|svg|webp|css|js)$/i.test(e)) continue;
-        if (set.size < 3) set.add(e);
+        if (/\.(png|jpg|jpeg|gif|svg|webp|css|js|woff|ttf)$/i.test(e)) continue;
+        if (set.size < 8) set.add(e);
       }
-      return [...set];
-    })();
-    surface.breaches = await Promise.all(emails.slice(0, 2).map(checkBreach));
+      emails = [...set];
+    }
+  } catch (e) {}
+
+  surface.emails = emails;
+  surface.breaches = await Promise.all(emails.slice(0, 5).map(checkBreach));
+
+  const related = new Set(extractEmailDomains(emails.join(' ')));
+  if (mxns.mx.length && /^[a-z0-9.-]+$/.test(mxns.mx[0])) {
+    const mb = baseDomain(mxns.mx[0]);
+    if (!/^(google|googlemail|gmail|outlook|microsoft|zoho|mailgun|sendgrid|amazonaws|amazonses|poczta|secureserver|hostgator|dreamhost|registrar\.)/i.test(mb)) related.add(mb);
+  }
+  related.delete(domain);
+  surface.relatedDomains = [...related].slice(0, 5);
+
+  /* Protección de email del dominio principal + dominios relacionados */
+  try {
+    surface.emailProtection = await checkEmailProtection(domain, findings);
   } catch (e) {
-    surface.breaches = [];
+    surface.emailProtection = null;
+  }
+
+  surface.relatedEmailProtection = {};
+  for (const rd of surface.relatedDomains.slice(0, 3)) {
+    try {
+      const prot = await checkEmailProtection(rd, []);
+      surface.relatedEmailProtection[rd] = prot;
+    } catch (e) {
+      surface.relatedEmailProtection[rd] = null;
+    }
+  }
+
+  /* Datos del dominio (RDAP) */
+  try {
+    surface.rdap = await getRdap(domain);
+  } catch (e) {
+    surface.rdap = null;
+  }
+  if (surface.rdap && surface.rdap.created) {
+    const ageDays = (Date.now() - new Date(surface.rdap.created).getTime()) / 86400000;
+    surface.domainAgeDays = Math.round(ageDays);
+    if (ageDays < 180) {
+      findings.push({
+        cat: 'A05',
+        title: 'Dominio registrado hace poco',
+        sev: 'bajo',
+        desc: 'El dominio se registró hace ' + Math.round(ageDays) + ' días. Los dominios recientes son indicador de phishing o infraestructura efímera.',
+      });
+    }
   }
 
   surface.findings = findings;

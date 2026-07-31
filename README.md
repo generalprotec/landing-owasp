@@ -41,11 +41,13 @@ Tras el escaneo, el botón **"Analizar la empresa"** revisa el contenido de la w
 
 El botón **"Superficie de ataque"** analiza lo que vería un atacante antes de intentar entrar:
 
-- **Protección de email**: registros SPF, DMARC y DKIM. Si faltan, cualquiera puede enviar correos falsificando el dominio (phishing).
-- **Rutas sensibles**: busca `.git`, `.env`, volcados SQL, `phpinfo.php`, paneles (`/admin`, `/wp-admin`), `security.txt`, etc.
+- **Datos del dominio (RDAP)**: registrador, fecha de registro, expiración y edad del dominio (consulta directa al registro autoritativo por TLD).
+- **Protección de email**: proveedor de correo, servidores MX/NS, y registros SPF, DMARC y DKIM (via DNS-over-HTTPS). Si faltan, cualquiera puede enviar correos falsificando el dominio (phishing).
+- **Dominios relacionados**: detecta otros dominios de la empresa desde los emails y el servidor MX, y comprueba su protección SPF/DMARC/DKIM.
+- **Emails en brechas**: comprueba todos los emails de la empresa en el API de filtraciones (xposedornot).
+- **Rutas sensibles**: busca `.git`, `.env`, volcados SQL, `phpinfo.php`, paneles (`/admin`, `/wp-admin`), etc.
 - **Subdominios**: enumera ~40 subdominios comunes (mail, api, admin, vpn, git, dev…) y detecta DNS comodín.
 - **Certificado TLS**: emisor, validez, días restantes y SANs.
-- **Brechas**: comprueba los emails del dominio en el API de filtraciones (xposedornot).
 
 ## 📄 Informe PDF
 

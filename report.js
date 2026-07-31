@@ -99,7 +99,20 @@ function generateReport({ url, scan, company, surface, date }) {
   if (surface) {
     sectionTitle(doc, 'Superficie de ataque');
 
+    if (surface.rdap) {
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#212529').text('Datos del dominio (RDAP)');
+      doc.font('Helvetica').fontSize(8.5).fillColor('#495057')
+        .text('  • Registrador: ' + clean(surface.rdap.registrar))
+        .text('  • Registrado: ' + clean((surface.rdap.created || '').slice(0, 10)) + ' (edad: ' + (surface.domainAgeDays != null ? surface.domainAgeDays + ' días' : '?') + ')')
+        .text('  • Expiración: ' + clean((surface.rdap.expiration || '').slice(0, 10)));
+      doc.moveDown(0.3);
+    }
+
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#212529').text('Protección de email');
+    doc.font('Helvetica').fontSize(8.5).fillColor('#495057')
+      .text('  • Proveedor: ' + clean(surface.emailProvider))
+      .text('  • Servidores MX: ' + (surface.mx || []).join(', '))
+      .text('  • Servidores NS: ' + (surface.ns || []).join(', '));
     const ep = surface.emailProtection || {};
     const rows = [
       ['SPF', ep.spf ? 'Configurado: ' + clean(ep.spf) : 'NO CONFIGURADO'],
@@ -108,6 +121,17 @@ function generateReport({ url, scan, company, surface, date }) {
     ];
     for (const [k, v] of rows) {
       doc.font('Helvetica').fontSize(8.5).fillColor('#495057').text('  • ' + k + ': ' + v);
+    }
+
+    const rel = surface.relatedDomains || [];
+    if (rel.length) {
+      doc.moveDown(0.3);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#212529').text('Dominios relacionados (' + rel.length + ')');
+      for (const d of rel) {
+        const p = (surface.relatedEmailProtection || {})[d] || {};
+        doc.font('Helvetica').fontSize(8.5).fillColor('#495057')
+          .text('  • ' + d + ' → SPF: ' + (p.spf ? 'OK' : 'NO') + ' · DMARC: ' + (p.dmarc ? 'OK' : 'NO') + ' · DKIM: ' + (p.dkim ? 'OK' : 'NO'));
+      }
     }
 
     if (surface.ssl) {

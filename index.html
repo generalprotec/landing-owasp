@@ -824,6 +824,29 @@
       ['DKIM', ep.dkim ? '<span class="ok-chip">✓ Detectado</span>' : '<span class="no-chip">✗ No detectado</span>'],
     ].map(r => '<tr><td class="mono"><b>' + r[0] + '</b></td><td>' + r[1] + '</td></tr>').join('');
 
+    const provider = s.emailProvider ? '<div class="row"><b>Proveedor de email:</b> ' + s.emailProvider + '</div>' : '';
+    const mxHtml = '<div class="row"><b>MX:</b> ' + ((s.mx || []).join(', ') || '—') + '</div>';
+    const nsHtml = '<div class="row"><b>NS:</b> ' + ((s.ns || []).join(', ') || '—') + '</div>';
+
+    const rdap = s.rdap;
+    const rdapHtml = rdap
+      ? '<table class="osint-table"><tr><th>Registrador</th><td>' + rdap.registrar + '</td></tr>' +
+        '<tr><th>Registrado</th><td>' + (rdap.created ? rdap.created.slice(0, 10) : '—') + ' (' + (s.domainAgeDays != null ? s.domainAgeDays + ' días' : '?') + ')</td></tr>' +
+        '<tr><th>Expiración</th><td>' + (rdap.expiration ? rdap.expiration.slice(0, 10) : '—') + '</td></tr>' +
+        '<tr><th>Última actualización</th><td>' + (rdap.updated ? rdap.updated.slice(0, 10) : '—') + '</td></tr>' +
+      '</table>'
+      : '<div class="row">No se pudieron obtener datos RDAP.</div>';
+
+    const relDomains = s.relatedDomains || [];
+    const relHtml = relDomains.length
+      ? '<table class="osint-table"><tr><th>Dominio</th><th>SPF</th><th>DMARC</th><th>DKIM</th></tr>' +
+        relDomains.map(d => {
+          const p = (s.relatedEmailProtection || {})[d] || {};
+          const ok = (x) => x ? '<span class="ok-chip">✓</span>' : '<span class="no-chip">✗</span>';
+          return '<tr><td class="mono"><b>' + d + '</b></td><td>' + ok(!!p.spf) + '</td><td>' + ok(!!p.dmarc) + '</td><td>' + ok(!!p.dkim) + '</td></tr>';
+        }).join('') + '</table>'
+      : '<div class="row">No se detectaron dominios relacionados.</div>';
+
     const breachHtml = (s.breaches || []).map(b =>
       '<div class="row"><b>' + b.email + ':</b> ' + (b.breaches && b.breaches.length ? '<span class="no-chip">filtrado en ' + b.breaches.length + ' brecha(s)</span>' : '<span class="ok-chip">sin filtraciones conocidas</span>') + '</div>'
     ).join('') || '<div class="row">No se verificaron emails.</div>';
@@ -831,7 +854,12 @@
     box.innerHTML =
       '<h3>🎯 Superficie de ataque (vista de un atacante)</h3>' +
       '<div class="co-grid">' +
-        '<div class="co-block"><h4>Protección de email</h4><table class="osint-table">' + emailRows + '</table><div class="row" style="margin-top:8px"><b>Brechas:</b></div>' + breachHtml + '</div>' +
+        '<div class="co-block"><h4>Datos del dominio (RDAP)</h4>' + rdapHtml + '</div>' +
+        '<div class="co-block"><h4>Protección de email</h4>' + provider + mxHtml + nsHtml + '<table class="osint-table">' + emailRows + '</table></div>' +
+        '<div class="co-block"><h4>Dominios relacionados (' + relDomains.length + ')</h4>' + relHtml + '</div>' +
+      '</div>' +
+      '<div class="co-block" style="margin-top:16px"><h4>Emails de la empresa en brechas (' + ((s.breaches || []).length) + ')</h4>' + breachHtml + '</div>' +
+      '<div class="co-grid" style="margin-top:16px">' +
         '<div class="co-block"><h4>Rutas sensibles (' + (s.exposed || []).length + ')</h4>' + exposedHtml + '</div>' +
         '<div class="co-block"><h4>Subdominios (' + (s.subdomains || []).length + ')</h4>' + subHtml + '</div>' +
       '</div>' +
