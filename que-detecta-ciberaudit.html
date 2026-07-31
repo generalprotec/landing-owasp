@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generalprotec CiberAudit — Qué detecta la auditoría del equipo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e6ecff; line-height: 1.6; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 32px 24px 60px; }
+  header { background: linear-gradient(135deg, #0b1120, #111a33); border-bottom: 1px solid #1e293b; padding: 36px 24px; text-align: center; }
+  header img { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; margin-bottom: 12px; }
+  header h1 { font-size: 1.8rem; font-weight: 800; }
+  header h1 span { background: linear-gradient(90deg, #6366f1, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header p { color: #94a3b8; font-size: .95rem; margin-top: 6px; }
+  .tagline { display: inline-block; margin-top: 14px; font-size: .75rem; text-transform: uppercase; letter-spacing: 2px; color: #818cf8; border: 1px solid rgba(99,102,241,.35); padding: 6px 16px; border-radius: 999px; background: rgba(99,102,241,.08); }
+  h2 { font-size: 1.25rem; font-weight: 800; color: #a5b4fc; margin: 40px 0 8px; display: flex; align-items: center; gap: 10px; }
+  h2 .bar { width: 4px; height: 20px; border-radius: 2px; background: linear-gradient(180deg, #6366f1, #8b5cf6); }
+  .intro { color: #cbd5e1; font-size: .95rem; max-width: 760px; margin: 0 auto; text-align: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 18px; }
+  .card { background: #16203d; border: 1px solid #26334f; border-radius: 14px; padding: 16px 18px; }
+  .card h3 { font-size: .95rem; font-weight: 700; color: #e6ecff; margin-bottom: 8px; }
+  .card ul { list-style: none; }
+  .card li { font-size: .83rem; color: #94a3b8; padding: 3px 0 3px 16px; position: relative; }
+  .card li::before { content: '▸'; position: absolute; left: 0; color: #6366f1; }
+  .full { background: #1a2339; border: 1px dashed #475069; border-radius: 14px; padding: 14px 18px; margin-top: 12px; font-size: .82rem; color: #94a3b8; }
+  .full b { color: #cbd5e1; }
+  .table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: .86rem; background: #16203d; border-radius: 12px; overflow: hidden; }
+  .table th { background: #1e2a47; color: #a5b4fc; text-align: left; padding: 10px 14px; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+  .table td { padding: 9px 14px; border-top: 1px solid #26334f; color: #cbd5e1; }
+  .table td:first-child { color: #e6ecff; font-weight: 600; width: 200px; }
+  .ok { color: #3ddc91; font-weight: 700; }
+  .no { color: #ff5c5c; font-weight: 700; }
+  .pill { display: inline-block; font-size: .7rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+  .pill.browser { background: rgba(99,102,241,.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,.3); }
+  .pill.full { background: rgba(255,159,67,.12); color: #ffd28a; border: 1px solid rgba(255,159,67,.3); }
+  .note { background: rgba(255,159,67,.08); border: 1px solid rgba(255,159,67,.25); border-radius: 12px; padding: 14px 18px; margin-top: 28px; font-size: .84rem; color: #ffd28a; }
+  footer { text-align: center; padding: 24px; border-top: 1px solid #1e293b; color: #64748b; font-size: .8rem; }
+  @media print { body { background: #fff; color: #111; } .card, .table { background: #fff; border-color: #ccc; } .card li, .intro, .table td { color: #333; } h2 { color: #4338ca; } .full { background: #fafafa; border-color: #999; } header { background: #f5f5f5; border-bottom: 1px solid #ccc; } }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="logo.jpg" alt="Generalprotec CiberAudit">
+  <h1>Generalprotec <span>CiberAudit</span></h1>
+  <p>Qué detecta la auditoría de tu equipo en el navegador</p>
+  <span class="tagline">Guía explicativa · v1.0</span>
+</header>
+
+<div class="wrap">
+  <p class="intro">La auditoría en línea analiza <b>solo lo que tu navegador expone</b>, sin instalar nada ni necesitar permisos de administrador. Replica la estructura del informe de <b>CiberAudit.exe</b>, pero se limita a la información accesible desde la web. Aquí tienes, sección por sección, todo lo que detecta.</p>
+
+  <h2><span class="bar"></span>1 · Información del sistema</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Identificación</h3>
+      <ul>
+        <li>Sistema operativo (Windows 10/11, macOS, Android, iOS, Linux…)</li>
+        <li>Navegador y versión (Chrome, Edge, Firefox, Safari, Opera)</li>
+        <li>Arquitectura (x86-64, x86-32, ARM64)</li>
+        <li>Modelo detectado (Mac, Chromebook…)</li>
+        <li>Idioma del sistema</li>
+        <li>Zona horaria</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Recursos</h3>
+      <ul>
+        <li>Número de núcleos de CPU (lógicos)</li>
+        <li>RAM total estimada</li>
+        <li>Resolución y tamaño de pantalla</li>
+        <li>Fecha y hora de la auditoría</li>
+      </ul>
+    </div>
+  </div>
+  <div class="full">✗ <b>No disponible en el navegador:</b> nombre del equipo, discos, procesos, servicios, programa de inicio, BIOS/placa, drivers, usuarios y actualizaciones. Estos datos requieren la versión completa <b>CiberAudit.exe</b>.</div>
+
+  <h2><span class="bar"></span>2 · Red y conectividad</h2>
+  <div class="card">
+    <ul>
+      <li>IP local (direcciones IPv4 de la red del equipo)</li>
+      <li>IP pública (la que ve Internet)</li>
+      <li>Tipo de conexión (4G, WiFi, ethernet…)</li>
+      <li>Velocidad de descarga estimada (Mbps)</li>
+      <li>Latencia o RTT (ms)</li>
+    </ul>
+  </div>
+  <div class="full">✗ <b>No disponible en el navegador:</b> escaneo de puertos, dispositivos ARP, mDNS, UPnP y recursos SMB compartidos. Solo se detectan con <b>CiberAudit.exe</b>.</div>
+
+  <h2><span class="bar"></span>3 · Tarjeta gráfica (GPU)</h2>
+  <div class="card">
+    <ul>
+      <li>Nombre del renderizador (GPU detectada)</li>
+      <li>Fabricante</li>
+      <li>Soporte de WebGL2</li>
+      <li>Soporte de WebGPU</li>
+    </ul>
+  </div>
+
+  <h2><span class="bar"></span>4 · Dispositivos multimedia</h2>
+  <div class="card">
+    <ul>
+      <li>Cámaras conectadas (videoinput)</li>
+      <li>Micrófonos (audioinput)</li>
+      <li>Altavoces y salidas de audio (audiooutput)</li>
+    </ul>
+  </div>
+  <div class="full">Nota: los nombres solo aparecen si el usuario concede permiso de cámara/micrófono. Sin permiso se muestran como "permiso no otorgado".</div>
+
+  <h2><span class="bar"></span>5 · Seguridad del navegador</h2>
+  <table class="table">
+    <thead><tr><th>Comprobación</th><th>Qué detecta</th></tr></thead>
+    <tbody>
+      <tr><td>HTTPS / conexión segura</td><td>Si la página se sirve en contexto seguro (isSecureContext)</td></tr>
+      <tr><td>Huella Canvas</td><td>Fingerprint del navegador generado al renderizar un canvas</td></tr>
+      <tr><td>Cookies</td><td>Si las cookies están habilitadas en el navegador</td></tr>
+      <tr><td>WebAuthn / Passkeys</td><td>Si el navegador soporta autenticación FIDO2</td></tr>
+    </tbody>
+  </table>
+  <div class="full">✗ <b>No disponible en el navegador:</b> antivirus, Windows Defender, UAC, BitLocker, parches pendientes, firewall y configuraciones SMB. Solo con <b>CiberAudit.exe</b>.</div>
+
+  <h2><span class="bar"></span>6 · Análisis de exposición web</h2>
+  <div class="card">
+    <ul>
+      <li>Huella Canvas generada (tamaño del fingerprint)</li>
+      <li>IP pública expuesta</li>
+      <li>Advertencia sobre las señales que usan los sistemas de rastreo (tracking) para identificarte</li>
+    </ul>
+  </div>
+  <div class="full">✗ <b>No disponible en el navegador:</b> auditoría de vulnerabilidades del sistema como SMB, LLMNR, TLS, parches y cuentas locales. Requiere <b>CiberAudit.exe</b>.</div>
+
+  <h2><span class="bar"></span>7 · APIs del navegador soportadas</h2>
+  <table class="table">
+    <thead><tr><th>API</th><th>Qué permite</th></tr></thead>
+    <tbody>
+      <tr><td>WebAssembly</td><td>Ejecutar código de alto rendimiento</td></tr>
+      <tr><td>Service Worker</td><td>Procesos en segundo plano y caché offline</td></tr>
+      <tr><td>WebAuthn / Passkeys</td><td>Autenticación sin contraseña (FIDO2)</td></tr>
+      <tr><td>Web Bluetooth</td><td>Comunicación con dispositivos Bluetooth</td></tr>
+      <tr><td>Web USB</td><td>Acceso a dispositivos USB</td></tr>
+      <tr><td>Web Serial</td><td>Comunicación con puertos serie</td></tr>
+      <tr><td>Gamepad API</td><td>Detección de mandos de juego</td></tr>
+      <tr><td>Vibrate</td><td>Vibración en dispositivos móviles</td></tr>
+      <tr><td>Fullscreen</td><td>Modo de pantalla completa</td></tr>
+      <tr><td>Clipboard API</td><td>Lectura y escritura del portapapeles</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="bar"></span>8 · Pantalla y preferencias</h2>
+  <div class="card">
+    <ul>
+      <li>Resolución de pantalla</li>
+      <li>Profundidad de color (bits)</li>
+      <li>Pixel ratio (densidad de píxeles)</li>
+      <li>Tema preferido (claro u oscuro)</li>
+      <li>Preferencia de reducir movimiento</li>
+      <li>Capacidad táctil (pantalla táctil y puntos de contacto)</li>
+    </ul>
+  </div>
+
+  <h2><span class="bar"></span>9 · Fuentes instaladas</h2>
+  <div class="card">
+    <ul>
+      <li>Detección de fuentes instaladas entre un conjunto conocido (Arial, Segoe UI, Calibri, Consolas, Georgia…)</li>
+      <li>Número total de fuentes detectadas</li>
+    </ul>
+  </div>
+
+  <h2><span class="bar"></span>10 · Batería (portátiles)</h2>
+  <div class="card">
+    <ul>
+      <li>Nivel de batería actual (porcentaje)</li>
+      <li>Estado: cargando o en descarga</li>
+    </ul>
+  </div>
+  <div class="full">Solo aplica a equipos portátiles con batería y navegadores que expongan la Battery API. En sobremesa se muestra como "no disponible".</div>
+
+  <div class="note">
+    <b>Resumen:</b> la auditoría de navegador es una <b>evaluación ligera</b> de lo que el propio navegador revela. El informe completo de <b>CiberAudit.exe</b> añade discos, procesos, servicios, antivirus, parches, firewall, escaneo de puertos y vulnerabilidades del sistema, que no pueden obtenerse desde una página web por razones de seguridad y privacidad del navegador.
+  </div>
+</div>
+
+<footer>Generalprotec CiberAudit · Auditoría ligera en navegador · © 2026 Generalprotec</footer>
+
+</body>
+</html>
