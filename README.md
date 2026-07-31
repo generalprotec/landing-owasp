@@ -37,6 +37,16 @@ Tras el escaneo, el botón **"Analizar la empresa"** revisa el contenido de la w
 - **Contacto**: emails, teléfonos y redes sociales (X, Facebook, Instagram, LinkedIn, TikTok, YouTube, WhatsApp).
 - **Páginas de la web**: enlaces "Acerca de", contacto y páginas legales (privacidad, aviso legal, términos).
 
+## 🎯 Superficie de ataque
+
+El botón **"Superficie de ataque"** analiza lo que vería un atacante antes de intentar entrar:
+
+- **Protección de email**: registros SPF, DMARC y DKIM. Si faltan, cualquiera puede enviar correos falsificando el dominio (phishing).
+- **Rutas sensibles**: busca `.git`, `.env`, volcados SQL, `phpinfo.php`, paneles (`/admin`, `/wp-admin`), `security.txt`, etc.
+- **Subdominios**: enumera ~40 subdominios comunes (mail, api, admin, vpn, git, dev…) y detecta DNS comodín.
+- **Certificado TLS**: emisor, validez, días restantes y SANs.
+- **Brechas**: comprueba los emails del dominio en el API de filtraciones (xposedornot).
+
 ## 🚀 Puesta en marcha
 
 ### Local
@@ -57,6 +67,7 @@ npm start
 ```
 GET /api/scan?url=tudominio.com
 GET /api/company?url=tudominio.com
+GET /api/osint?url=tudominio.com
 ```
 
 Respuesta de `/api/scan`:

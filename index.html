@@ -451,6 +451,14 @@
     margin-top: 12px;
   }
 
+  .osint-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: 6px; }
+  .osint-table th, .osint-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .osint-table th { color: var(--muted); text-transform: uppercase; font-size: .72rem; letter-spacing: .8px; }
+  .osint-table td { color: var(--text); word-break: break-all; }
+  .osint-table .mono { font-family: Consolas, monospace; }
+  .ok-chip { color: var(--verde); font-weight: 700; }
+  .no-chip { color: var(--critico); font-weight: 700; }
+
   .card .card-findings { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 14px; }
 
   .card-findings .tag-line { display: flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
@@ -638,10 +646,12 @@
         <div class="score-ring" id="scoreRing" style="--pct:0"><b id="scoreVal">–</b></div>
       </div>
       <div id="resultFindings"></div>
-      <div style="text-align:center; margin-top:22px">
+      <div style="text-align:center; margin-top:22px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap">
         <button class="btn btn-ghost" type="button" id="companyBtn">🏢 Analizar la empresa</button>
+        <button class="btn btn-ghost" type="button" id="osintBtn">🎯 Superficie de ataque</button>
       </div>
       <div class="company" id="companyResults"></div>
+      <div class="company" id="osintResults"></div>
     </div>
   </div>
 </section>
@@ -769,6 +779,80 @@
     } finally {
       btn.disabled = false;
       btn.textContent = 'Analizar';
+    }
+  });
+
+  function renderOsint(s) {
+    const box = document.getElementById('osintResults');
+    const sevLabel2 = { critico: 'Crítico', alto: 'Alto', medio: 'Medio', bajo: 'Bajo', info: 'Info' };
+    const findings = (s.findings || []).map(f =>
+      '<div class="finding">' +
+        '<span class="badge ' + f.sev + '">' + sevLabel2[f.sev] + '</span>' +
+        '<div><b>' + f.cat + ' · ' + f.title + '</b><p>' + f.desc + '</p></div>' +
+      '</div>'
+    ).join('') || '<p style="color:var(--verde)">No se detectaron hallazgos relevantes en la superficie de ataque.</p>';
+
+    const ssl = s.ssl;
+    const sslHtml = ssl
+      ? '<div class="co-grid"><div class="co-block"><h4>Certificado TLS</h4>' +
+          '<div class="row"><b>Emisor:</b> ' + ssl.issuer + '</div>' +
+          '<div class="row"><b>Dominio:</b> ' + ssl.subject + '</div>' +
+          '<div class="row"><b>Emisión:</b> ' + ssl.validFrom + '</div>' +
+          '<div class="row"><b>Caducidad:</b> ' + ssl.validTo + ' (' + ssl.expiresInDays + ' días)</div>' +
+          '<div class="row"><b>SANs:</b> ' + (ssl.san || []).slice(0, 8).join(', ') + '</div>' +
+        '</div></div>'
+      : '<p style="color:var(--muted)">Sin datos TLS.</p>';
+
+    const subHtml = '<table class="osint-table"><tr><th>Subdominio</th><th>IPs</th></tr>' +
+      (s.subdomains || []).map(sub => '<tr><td class="mono">' + sub.host + '</td><td class="mono">' + sub.ips.join(', ') + '</td></tr>').join('') +
+      '</table>';
+
+    const exposedHtml = '<table class="osint-table"><tr><th>Ruta</th><th>Estado</th><th>Nota</th></tr>' +
+      (s.exposed || []).map(e => '<tr><td class="mono">' + e.p + '</td><td>' + e.code + '</td><td>' + e.label + '</td></tr>').join('') +
+      '</table>';
+
+    const ep = s.emailProtection || {};
+    const emailRows = [
+      ['SPF', ep.spf ? '<span class="ok-chip">✓ ' + ep.spf + '</span>' : '<span class="no-chip">✗ No configurado</span>'],
+      ['DMARC', ep.dmarc ? '<span class="ok-chip">✓ ' + ep.dmarc + '</span>' : '<span class="no-chip">✗ No configurado</span>'],
+      ['DKIM', ep.dkim ? '<span class="ok-chip">✓ Detectado</span>' : '<span class="no-chip">✗ No detectado</span>'],
+    ].map(r => '<tr><td class="mono"><b>' + r[0] + '</b></td><td>' + r[1] + '</td></tr>').join('');
+
+    const breachHtml = (s.breaches || []).map(b =>
+      '<div class="row"><b>' + b.email + ':</b> ' + (b.breaches && b.breaches.length ? '<span class="no-chip">filtrado en ' + b.breaches.length + ' brecha(s)</span>' : '<span class="ok-chip">sin filtraciones conocidas</span>') + '</div>'
+    ).join('') || '<div class="row">No se verificaron emails.</div>';
+
+    box.innerHTML =
+      '<h3>🎯 Superficie de ataque (vista de un atacante)</h3>' +
+      '<div class="co-grid">' +
+        '<div class="co-block"><h4>Protección de email</h4><table class="osint-table">' + emailRows + '</table><div class="row" style="margin-top:8px"><b>Brechas:</b></div>' + breachHtml + '</div>' +
+        '<div class="co-block"><h4>Rutas sensibles (' + (s.exposed || []).length + ')</h4>' + exposedHtml + '</div>' +
+        '<div class="co-block"><h4>Subdominios (' + (s.subdomains || []).length + ')</h4>' + subHtml + '</div>' +
+      '</div>' +
+      sslHtml +
+      '<h4 style="margin:20px 0 10px">Hallazgos</h4>' + findings;
+  }
+
+  const osintBtn = document.getElementById('osintBtn');
+  osintBtn.addEventListener('click', async () => {
+    const url = input.value.trim();
+    if (!url) { input.focus(); return; }
+    osintBtn.disabled = true;
+    osintBtn.textContent = 'Analizando superficie…';
+    const box = document.getElementById('osintResults');
+    box.innerHTML = '<p style="color:var(--muted)">Buscando subdominios, archivos expuestos, DNS y SSL…</p>';
+
+    try {
+      const res = await fetch('/api/osint?url=' + encodeURIComponent(url));
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Error en el análisis');
+      renderOsint(data.surface);
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+      box.innerHTML = '<p style="color:var(--critico)">Error: ' + err.message + '</p>';
+    } finally {
+      osintBtn.disabled = false;
+      osintBtn.textContent = '🎯 Superficie de ataque';
     }
   });
 
