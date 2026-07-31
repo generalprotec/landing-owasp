@@ -716,6 +716,7 @@
       '<div class="co-grid">' +
         '<div class="co-block"><h4>Identificación</h4>' +
           '<div class="row"><b>Nombre:</b> ' + (c.name || '—') + '</div>' +
+          '<div class="row"><b>NIF/CIF:</b> ' + ((c.taxId || []).join(', ') || 'No detectado') + '</div>' +
           '<div class="row"><b>Descripción:</b> ' + (c.description || '—') + '</div>' +
           '<div class="row"><b>Sector:</b><br>' + (sectors || '—') + '</div>' +
         '</div>' +
@@ -723,6 +724,9 @@
           '<div class="row"><b>Emails:</b> ' + ((c.emails || []).join(', ') || '—') + '</div>' +
           '<div class="row"><b>Teléfonos:</b> ' + ((c.phones || []).join(' · ') || '—') + '</div>' +
           '<div class="row"><b>Redes sociales:</b></div>' + social +
+          '<div class="row" style="margin-top:8px"><b>Dirección:</b> ' + ((c.address || []).join(' · ') || 'No detectada') + '</div>' +
+          '<div class="row"><b>Código postal / ciudad:</b> ' + ((c.postalCode || '—') + ' ' + (c.city || '')) + '</div>' +
+          '<div class="row"><b>Mapa:</b> ' + (c.hasMap ? '<span class="ok-chip">Enlace de mapa detectado</span>' : 'No detectado') + '</div>' +
         '</div>' +
         '<div class="co-block"><h4>Páginas de la web</h4>' +
           '<div class="row"><b>Acerca de:</b> ' + (c.aboutUrl ? '<a href="' + c.aboutUrl + '" target="_blank" rel="noopener">' + c.aboutUrl + '</a>' : 'No se encontró') + '</div>' +

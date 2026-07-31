@@ -346,6 +346,39 @@ function extractEmails(html) {
   return [...set];
 }
 
+function extractTaxId(text) {
+  const found = new Set();
+  const re = /(?<![0-9A-Z])([A-HJ-NP-SUVW][0-9]{7}[0-9A-J]|[XYZ][0-9]{7}[A-Z0-9]|[0-9]{8}[A-Z])(?![0-9])/g;
+  let m;
+  while ((m = re.exec(text))) found.add(m[1].toUpperCase());
+  if (found.size) return [...found];
+  const labeled = text.match(/(?:NIF|CIF|N\.I\.F|C\.I\.F|VAT)[:.\s]*([A-HJ-NP-SUVW][0-9]{7}[0-9A-J]|[XYZ0-9][0-9]{7}[A-Z0-9])/i);
+  if (labeled) return [labeled[1].toUpperCase()];
+  return [];
+}
+
+const PROVINCES = ['Álava','Albacete','Alicante','Almería','Asturias','Ávila','Badajoz','Barcelona','Burgos','Cáceres','Cádiz','Cantabria','Castellón','Ceuta','Ciudad Real','Córdoba','Cuenca','Girona','Granada','Guadalajara','Guipúzcoa','Huelva','Huesca','Illes Balears','Jaén','La Coruña','La Rioja','Las Palmas','León','Lleida','Lugo','Madrid','Málaga','Melilla','Murcia','Navarra','Ourense','Palencia','Pontevedra','Salamanca','Santa Cruz de Tenerife','Segovia','Sevilla','Soria','Tarragona','Teruel','Toledo','Valencia','Valladolid','Vizcaya','Zamora','Zaragoza'];
+
+function extractAddress(text) {
+  const addresses = new Set();
+  const streetRe = /(?:C\/|Calle|Avenida|Avda|Av\.|Plaza|Pl\.|Paseo|P\.?º|Camino|Carretera|Polígono|Pol\.|Rúa|Gran Vía|Ctra\.?)\s+[A-Za-zÁÉÍÓÚÑÜáéíóúñü0-9ºª#\/.\- ]{3,70}/gi;
+  let m;
+  while ((m = streetRe.exec(text))) addresses.add(m[0].trim().replace(/[.,;:]+$/, ''));
+  return [...addresses].slice(0, 3);
+}
+
+function extractPostalCodeCity(text) {
+  const postal = /(?<![0-9])((?:[01][0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-2])\d{3})(?![0-9])/g;
+  let m;
+  while ((m = postal.exec(text))) {
+    const after = text.slice(m.index + 5, m.index + 45).match(/^\s*([A-Za-zÁÉÍÓÚÑÜáéíóúñü]+(?:\s+[A-Za-zÁÉÍÓÚÑÜáéíóúñü]+)?)/);
+    if (after && after[1].length >= 3) {
+      return { postalCode: m[1], city: after[1] };
+    }
+  }
+  return null;
+}
+
 function extractPhones(html) {
   const set = new Set();
   const re = /(?:\+?\d{1,3}[ -]?)?(?:\(\d{2,4}\)[ -]?)?\d{3,4}[-.\s]?\d{3,4}(?:[-.\s]?\d{2,4})?/g;
@@ -411,10 +444,20 @@ async function analyzeCompany(rawUrl) {
   const aboutText = about.length ? stripTags(extraBodies[0] || '') : null;
   const contactText = contact.length ? stripTags(extraBodies[pagesToFetch.indexOf(contact[0])] || '') : null;
 
+  const locText = ((contactText || '') + ' ' + aboutText + ' ' + allText).slice(0, 20000);
+  const addresses = extractAddress(locText);
+  const pcCity = extractPostalCodeCity(locText);
+  const hasMap = /(google\.com\/maps|maps\.google|embed\?map|goo\.gl\/maps|openstreetmap)/i.test(home.body + extraBodies.join(' '));
+
   return {
     name: name || null,
     description: description || null,
     sector: detectSector(allText),
+    taxId: extractTaxId(allText),
+    address: addresses,
+    postalCode: pcCity ? pcCity.postalCode : null,
+    city: pcCity ? pcCity.city : null,
+    hasMap,
     emails: extractEmails(allHtml),
     phones: extractPhones((contactText || '') + ' ' + allText),
     social: detectSocial(links),

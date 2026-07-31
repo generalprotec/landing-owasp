@@ -33,8 +33,8 @@
 
 Tras el escaneo, el botón **"Analizar la empresa"** revisa el contenido de la web (página de inicio, "Acerca de" y contacto) y extrae:
 
-- **Identificación**: nombre, descripción y sector detectado por palabras clave.
-- **Contacto**: emails, teléfonos y redes sociales (X, Facebook, Instagram, LinkedIn, TikTok, YouTube, WhatsApp).
+- **Identificación**: nombre, descripción, sector detectado por palabras clave y **NIF/CIF**.
+- **Contacto**: emails, teléfonos, redes sociales (X, Facebook, Instagram, LinkedIn, TikTok, YouTube, WhatsApp) y **dirección física** con código postal y ciudad.
 - **Páginas de la web**: enlaces "Acerca de", contacto y páginas legales (privacidad, aviso legal, términos).
 
 ## 🎯 Superficie de ataque

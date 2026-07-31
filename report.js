@@ -73,10 +73,13 @@ function generateReport({ url, scan, company, surface, date }) {
     const c = company;
     const fields = [
       ['Nombre', clean(c.name)],
+      ['NIF/CIF', (c.taxId || []).join(', ')],
       ['Descripción', clean(c.description)],
       ['Sector', (c.sector || []).map((s) => s.name).join(', ')],
       ['Emails', (c.emails || []).join(', ')],
       ['Teléfonos', (c.phones || []).join(', ')],
+      ['Dirección', (c.address || []).join(', ')],
+      ['Código postal / ciudad', (c.postalCode || '') + ' ' + (c.city || '')],
       ['Redes sociales', Object.entries(c.social || {}).map(([k, v]) => k + ': ' + v).join('\n') || '—'],
       ['Acerca de', clean(c.aboutUrl)],
       ['Contacto', clean(c.contactUrl)],
