@@ -13,6 +13,7 @@
 - 📋 **10 categorías OWASP** (A01–A10), cada una con su severidad y hallazgos.
 - 🎯 **Score de seguridad** de 0 a 100 según los riesgos detectados.
 - 🧩 **Filtros por severidad**: críticos, altos y medios.
+- 🏢 **Análisis de la empresa**: extrae nombre, sector, contacto, redes sociales y páginas legales de su web.
 - ⚡ **100% responsive** con tema oscuro.
 
 ## 🔎 Qué comprueba el escáner
@@ -27,6 +28,14 @@
 | **A07** Identificación y Autenticación | Atributos `Secure` y `HttpOnly` en cookies, formularios de login |
 
 > Las categorías A04, A08, A09 y A10 requieren análisis de lógica de negocio o de la propia aplicación y se marcan como revisión manual.
+
+## 🏢 Análisis de la empresa
+
+Tras el escaneo, el botón **"Analizar la empresa"** revisa el contenido de la web (página de inicio, "Acerca de" y contacto) y extrae:
+
+- **Identificación**: nombre, descripción y sector detectado por palabras clave.
+- **Contacto**: emails, teléfonos y redes sociales (X, Facebook, Instagram, LinkedIn, TikTok, YouTube, WhatsApp).
+- **Páginas de la web**: enlaces "Acerca de", contacto y páginas legales (privacidad, aviso legal, términos).
 
 ## 🚀 Puesta en marcha
 
@@ -47,9 +56,10 @@ npm start
 
 ```
 GET /api/scan?url=tudominio.com
+GET /api/company?url=tudominio.com
 ```
 
-Respuesta:
+Respuesta de `/api/scan`:
 
 ```json
 {
@@ -59,6 +69,27 @@ Respuesta:
   "findings": [
     { "cat": "A05", "title": "Falta cabecera HSTS", "sev": "alto", "desc": "..." }
   ]
+}
+```
+
+Respuesta de `/api/company`:
+
+```json
+{
+  "ok": true,
+  "company": {
+    "name": "Mi Empresa",
+    "description": "...",
+    "sector": [{ "name": "Tecnología / Software", "count": 3 }],
+    "emails": ["info@miespresa.com"],
+    "phones": ["+34 600 000 000"],
+    "social": { "linkedin": "https://linkedin.com/company/mi-empresa" },
+    "hasAbout": true,
+    "aboutUrl": "/acerca-de",
+    "hasContact": true,
+    "contactUrl": "/contacto",
+    "legalPages": ["/politica-de-privacidad"]
+  }
 }
 ```
 
