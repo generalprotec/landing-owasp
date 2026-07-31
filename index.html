@@ -707,18 +707,18 @@
       <button class="btn btn-primary" type="submit" id="scanBtn">Analizar</button>
     </form>
     <div class="scan-status" id="scanStatus"></div>
+    <div style="text-align:center; margin:22px 0; display:flex; gap:12px; justify-content:center; flex-wrap:wrap">
+      <button class="btn btn-ghost" type="button" id="companyBtn">🏢 Analizar la empresa</button>
+      <button class="btn btn-ghost" type="button" id="osintBtn">🎯 Superficie de ataque</button>
+      <button class="btn btn-ghost" type="button" id="pcQuickBtn">🖥️ ¿Quieres auditar tu propio equipo?</button>
+      <button class="btn btn-primary" type="button" id="reportBtn">📄 Descargar informe</button>
+    </div>
     <div class="results" id="results">
       <div class="result-head">
         <div class="target" id="resultTarget">—</div>
         <div class="score-ring" id="scoreRing" style="--pct:0"><b id="scoreVal">–</b></div>
       </div>
       <div id="resultFindings"></div>
-      <div style="text-align:center; margin-top:22px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap">
-        <button class="btn btn-ghost" type="button" id="companyBtn">🏢 Analizar la empresa</button>
-        <button class="btn btn-ghost" type="button" id="osintBtn">🎯 Superficie de ataque</button>
-        <button class="btn btn-ghost" type="button" id="pcQuickBtn">🖥️ ¿Quieres auditar tu propio equipo?</button>
-        <button class="btn btn-primary" type="button" id="reportBtn">📄 Descargar informe</button>
-      </div>
       <div class="company" id="companyResults"></div>
       <div class="company" id="osintResults"></div>
     </div>
