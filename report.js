@@ -166,6 +166,48 @@ function generateReport({ url, scan, company, surface, date }) {
       doc.font('Helvetica').fontSize(8.5).fillColor(found ? '#e03131' : '#37b24d')
         .text('  • ' + clean(b.email) + ': ' + (found ? 'filtrado en ' + b.breaches.length + ' brecha(s)' : 'sin filtraciones conocidas'));
     }
+    if (surface.emailPattern) {
+      doc.font('Helvetica').fontSize(8.5).fillColor('#495057')
+        .text('  • Patrón de emails: ' + clean(surface.emailPattern.type) + ' — ' + clean(surface.emailPattern.detail) + ' (' + (surface.emailPattern.samples || []).join(', ') + ')');
+    }
+
+    if (surface.jobs) {
+      doc.moveDown(0.3);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#212529').text('Ofertas de empleo y stack tecnológico');
+      doc.font('Helvetica').fontSize(8.5).fillColor('#495057')
+        .text('  • Página: ' + clean(surface.jobs.url))
+        .text('  • Tecnologías reveladas: ' + (surface.jobs.techs || []).join(', '));
+    }
+
+    if (surface.github && surface.github.info) {
+      doc.moveDown(0.3);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#212529').text('Repositorios públicos (GitHub)');
+      doc.font('Helvetica').fontSize(8.5).fillColor('#495057')
+        .text('  • Organización: ' + clean(surface.github.org) + ' (' + surface.github.url + ')')
+        .text('  • Repos públicos: ' + surface.github.info.repos);
+    }
+
+    if (surface.wayback && (surface.wayback.oldest || surface.wayback.newest)) {
+      doc.moveDown(0.3);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#212529').text('Historial en Wayback Machine');
+      doc.font('Helvetica').fontSize(8.5).fillColor('#495057')
+        .text('  • Primera copia: ' + clean((surface.wayback.oldest || [])[0]) + ' — Última: ' + clean((surface.wayback.newest || [])[0]));
+    }
+
+    if (surface.sitemap) {
+      doc.moveDown(0.3);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#212529').text('Sitemap');
+      doc.font('Helvetica').fontSize(8.5).fillColor('#495057')
+        .text('  • URLs indexadas: ' + surface.sitemap.urlCount)
+        .text('  • Rutas sensibles: ' + ((surface.sitemap.interesting || []).join(', ') || 'ninguna'));
+    }
+
+    const ctSubs = surface.ctSubdomains || [];
+    if (ctSubs.length) {
+      doc.moveDown(0.3);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#212529').text('Subdominios por certificados (CT logs)');
+      doc.font('Helvetica').fontSize(8.5).fillColor('#495057').text(ctSubs.join('\n'));
+    }
 
     doc.moveDown(0.3);
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#212529').text('Hallazgos de superficie');

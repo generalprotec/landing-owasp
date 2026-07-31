@@ -776,6 +776,156 @@ function baseDomain(host) {
   return parts.length > 2 ? parts.slice(-2).join('.') : host;
 }
 
+/* ============ OTROS ACTIVOS DE LA EMPRESA ============ */
+
+function detectEmailPattern(emails) {
+  if (!emails.length) return null;
+  const generic = /^(info|contacto|contact|admin|ventas|hola|hello|noreply|no-reply|no_reply|webmaster|support|soporte|atencion|atencionalcliente|pedidos|compras)$/i;
+  const localParts = emails.map((e) => e.split('@')[0]).filter((l) => !generic.test(l));
+  if (!localParts.length) return { type: 'Solo correos genéricos', detail: 'No se deduce un patrón de nombres de empleados', samples: emails.slice(0, 5) };
+  const dotted = localParts.filter((l) => l.includes('.'));
+  const dots = dotted.every((l) => l.split('.').length === 2);
+  const type = dotted.length === 0 ? 'Sin separadores (ej. usuario)' : dots ? 'nombre.apellido' : 'Variable';
+  const names = dotted.filter((l) => /^[a-z]+\.[a-z]+$/i.test(l)).length;
+  const initials = localParts.filter((l) => /^[a-z]\.[a-z]+$/i.test(l) || /^[a-z]{1,2}[0-9]*$/i.test(l)).length;
+  const detail = names ? 'Los correos parecen seguir el patrón nombre.apellido, útil para adivinar otros empleados' : initials ? 'Se observan iniciales u identificadores cortos' : 'Formato no uniforme';
+  return { type, detail, samples: localParts.slice(0, 6) };
+}
+
+const JOB_TECH = [
+  'react', 'angular', 'vue', 'node.js', 'nodejs', 'python', 'java', 'php', 'laravel', 'symfony',
+  'django', 'ruby', 'golang', 'go ', 'typescript', 'javascript', 'docker', 'kubernetes', 'k8s',
+  'aws', 'azure', 'gcp', 'google cloud', 'mysql', 'postgresql', 'postgres', 'mongodb', 'redis',
+  'wordpress', 'devops', 'ci/cd', 'linux', 'terraform', 'sap', 'oracle', 'salesforce', 'office 365',
+  '.net', 'c#', 'kotlin', 'swift', 'flutter', 'microservicios', 'gitlab', 'jenkins', 'grafana',
+];
+
+async function analyzeJobs(parsed, links) {
+  const jobLink = links.find((l) =>
+    /\/(empleo|empleos|trabaja-con-nosotros|trabaja-con-nosotros|careers|career|jobs|trabaja|vacantes|ofertas-de-empleo|unete|únete)/i.test(l.href) ||
+    /(empleo|ofertas de empleo|trabaja con nosotros|trabaja para nosotros|unete al equipo|únete al equipo|carreras)/i.test(l.text)
+  );
+  if (!jobLink) return null;
+  const page = await fetchPage(parsed, jobLink.href);
+  if (!page) return null;
+  const text = stripTags(page.body).toLowerCase();
+  const techs = [...new Set(JOB_TECH.filter((t) => text.includes(t)))];
+  return { url: jobLink.href, techs: techs.slice(0, 12) };
+}
+
+function findGithub(links) {
+  for (const l of links) {
+    try {
+      const u = new URL(l.href);
+      if (!/^github\.com$/i.test(u.hostname)) continue;
+      const parts = u.pathname.split('/').filter(Boolean);
+      if (!parts[0] || /^(sponsors|features|topics|marketplace|explore|collections|settings|login|signup|about|orgs|search)$/i.test(parts[0])) continue;
+      return { org: parts[0], url: 'https://github.com/' + parts[0] };
+    } catch (e) {}
+  }
+  return null;
+}
+
+function getGithubOrg(org) {
+  return new Promise((resolve) => {
+    const req = https.get('https://api.github.com/orgs/' + encodeURIComponent(org), { timeout: 8000, headers: { 'User-Agent': 'WebSecAuditor/1.0', Accept: 'application/vnd.github+json' } }, (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          if (j.message && !j.public_repos) return resolve(null);
+          resolve({ name: j.name || org, repos: j.public_repos, created: j.created_at, blog: j.blog, location: j.location });
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+async function getWayback(domain) {
+  const base = 'https://web.archive.org/cdx/search/cdx?url=' + encodeURIComponent(domain) + '&output=json&fl=timestamp,statuscode&filter=statuscode:200&collapse=timestamp:6';
+  const get = (suffix) => new Promise((resolve) => {
+    const req = https.get(base + suffix, { timeout: 15000 }, (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          resolve(Array.isArray(j) && j.length > 1 ? j[1] : null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+  const [oldest, newest] = await Promise.all([get('&limit=1'), get('&limit=-1')]);
+  return { oldest, newest };
+}
+
+async function getSitemap(parsed) {
+  const page = await fetchPage(parsed, '/sitemap.xml');
+  if (!page || page.res.statusCode !== 200) return null;
+  const urls = [...page.body.matchAll(/<loc>([^<]+)<\/loc>/gi)].map((m) => m[1]);
+  const interesting = [...new Set(urls.filter((u) => /admin|login|private|intranet|backup|old|dev|test|wp-admin|phpmyadmin|git|\.sql|\.env|api/i.test(u)))].slice(0, 12);
+  return { urlCount: urls.length, interesting };
+}
+
+function httpJson(url, timeout) {
+  return new Promise((resolve) => {
+    const req = https.get(url, { timeout, headers: { 'User-Agent': 'Mozilla/5.0 (WebSecAuditor/1.0)', Accept: 'application/json' } }, (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode, body: JSON.parse(d) });
+        } catch (e) {
+          resolve({ status: res.statusCode, body: null });
+        }
+      });
+    });
+    req.on('error', () => resolve({ status: 0, body: null }));
+    req.on('timeout', () => { req.destroy(); resolve({ status: 0, body: null }); });
+  });
+}
+
+async function ctViaCertspotter(domain) {
+  const { status, body } = await httpJson('https://api.certspotter.com/v1/issuances?domain=' + encodeURIComponent(domain) + '&include_subdomains=true&expand=dns_names', 12000);
+  if (status !== 200 || !Array.isArray(body)) return null;
+  const names = new Set();
+  for (const r of body) {
+    for (const n of r.dns_names || []) {
+      const nn = String(n).trim().toLowerCase().replace(/^\*\./, '');
+      if (nn.endsWith('.' + domain)) names.add(nn);
+    }
+  }
+  return [...names].sort().slice(0, 50);
+}
+
+async function ctViaCrt(domain) {
+  const { status, body } = await httpJson('https://crt.sh/?q=%25.' + encodeURIComponent(domain) + '&output=json', 15000);
+  if (status !== 200 || !Array.isArray(body)) return null;
+  const names = new Set();
+  for (const r of body) {
+    for (const n of String(r.name_value || '').split('\n')) {
+      const nn = n.trim().toLowerCase().replace(/^\*\./, '');
+      if (nn.endsWith('.' + domain)) names.add(nn);
+    }
+  }
+  return [...names].sort().slice(0, 50);
+}
+
+async function getCtSubdomains(domain) {
+  const fromSpotter = await ctViaCertspotter(domain);
+  if (fromSpotter !== null) return fromSpotter;
+  return (await ctViaCrt(domain)) || [];
+}
+
 async function analyzeAttackSurface(rawUrl) {
   const parsed = normalizeUrl(rawUrl);
   const domain = parsed.hostname.replace(/^www\./, '');
@@ -811,14 +961,15 @@ async function analyzeAttackSurface(rawUrl) {
 
   /* Dominios relacionados: desde emails de la web y del registro MX */
   let emails = [];
+  let homeHtml = '';
   try {
     const home = await fetchPage(parsed, '/');
     if (home) {
-      const html = home.body;
+      homeHtml = home.body;
       const set = new Set();
       const re = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
       let m;
-      while ((m = re.exec(html))) {
+      while ((m = re.exec(home.body))) {
         const e = m[0].toLowerCase();
         if (/\.(png|jpg|jpeg|gif|svg|webp|css|js|woff|ttf)$/i.test(e)) continue;
         if (set.size < 8) set.add(e);
@@ -828,7 +979,73 @@ async function analyzeAttackSurface(rawUrl) {
   } catch (e) {}
 
   surface.emails = emails;
+  surface.emailPattern = detectEmailPattern(emails);
   surface.breaches = await Promise.all(emails.slice(0, 5).map(checkBreach));
+
+  const homeLinks = homeHtml ? extractLinks(homeHtml, parsed) : [];
+
+  const [jobs, github, wayback, sitemap, crt] = await Promise.all([
+    homeLinks.length ? analyzeJobs(parsed, homeLinks) : null,
+    (async () => {
+      const gh = findGithub(homeLinks);
+      if (!gh) return null;
+      const org = await getGithubOrg(gh.org);
+      return { ...gh, info: org };
+    })(),
+    getWayback(domain),
+    getSitemap(parsed),
+    getCtSubdomains(domain),
+  ]);
+
+  surface.jobs = jobs;
+  surface.github = github;
+  surface.wayback = wayback;
+  surface.sitemap = sitemap;
+  surface.ctSubdomains = crt;
+
+  if (jobs && jobs.techs && jobs.techs.length) {
+    findings.push({
+      cat: 'A06',
+      title: 'Ofertas de empleo revelan el stack tecnológico',
+      sev: 'medio',
+      desc: 'La página de empleo (' + jobs.url + ') menciona: ' + jobs.techs.join(', ') + '. Un atacante usará esto para buscar CVEs concretos.',
+    });
+  }
+  if (github && github.info) {
+    findings.push({
+      cat: 'A08',
+      title: 'Organización de GitHub con repositorios públicos',
+      sev: 'bajo',
+      desc: github.org + ' tiene ' + github.info.repos + ' repos públicos en ' + github.url + '. Revisar que no filtren secretos ni código interno.',
+    });
+  }
+  if (wayback && (wayback.oldest || wayback.newest)) {
+    findings.push({
+      cat: 'A05',
+      title: 'Versiones históricas de la web archivadas',
+      sev: 'bajo',
+      desc: 'Existen copias de la web en Wayback Machine' + (wayback.oldest ? ' desde ' + wayback.oldest[0] : '') + (wayback.newest ? ' hasta ' + wayback.newest[0] : '') + '. Configuraciones o archivos antiguos podrían recuperarse.',
+    });
+  }
+  if (sitemap && sitemap.interesting && sitemap.interesting.length) {
+    findings.push({
+      cat: 'A05',
+      title: 'Sitemap revela rutas sensibles',
+      sev: 'medio',
+      desc: 'El sitemap.xml contiene URLs potencialmente sensibles: ' + sitemap.interesting.slice(0, 6).join(', '),
+    });
+  }
+  if (crt && crt.length) {
+    const sens = crt.filter((s) => /admin|dev|staging|test|vpn|portal|intranet|git|jenkins|owa|api|mail|ftp/i.test(s));
+    if (sens.length) {
+      findings.push({
+        cat: 'A05',
+        title: 'Subdominios sensibles en certificados (CT logs)',
+        sev: 'medio',
+        desc: 'Los certificados públicos revelan ' + sens.length + ' subdominios de interés: ' + sens.slice(0, 8).join(', '),
+      });
+    }
+  }
 
   const related = new Set(extractEmailDomains(emails.join(' ')));
   if (mxns.mx.length && /^[a-z0-9.-]+$/.test(mxns.mx[0])) {

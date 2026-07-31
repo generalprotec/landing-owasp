@@ -851,6 +851,51 @@
       '<div class="row"><b>' + b.email + ':</b> ' + (b.breaches && b.breaches.length ? '<span class="no-chip">filtrado en ' + b.breaches.length + ' brecha(s)</span>' : '<span class="ok-chip">sin filtraciones conocidas</span>') + '</div>'
     ).join('') || '<div class="row">No se verificaron emails.</div>';
 
+    const patternHtml = s.emailPattern
+      ? '<div class="row" style="margin-top:8px"><b>Patrón de emails:</b> ' + s.emailPattern.type + '<br><span style="font-size:.8rem;color:var(--muted)">' + s.emailPattern.detail + '</span></div>' +
+        '<div class="row mono">' + (s.emailPattern.samples || []).join(', ') + '</div>'
+      : '';
+
+    const jobsHtml = s.jobs
+      ? '<div class="co-block"><h4>Empleo / Stack tecnológico</h4>' +
+        '<div class="row"><b>Página:</b> <a href="' + s.jobs.url + '" target="_blank" rel="noopener">' + s.jobs.url + '</a></div>' +
+        '<div class="row"><b>Tecnologías que revela:</b></div>' +
+        (s.jobs.techs && s.jobs.techs.length ? s.jobs.techs.map(t => '<span class="chip">' + t + '</span>').join('') : '<div class="row">Ninguna destacada</div>') +
+      '</div>'
+      : '';
+
+    const githubHtml = s.github && s.github.info
+      ? '<div class="co-block"><h4>Repositorios públicos</h4>' +
+        '<div class="row"><b>GitHub:</b> <a href="' + s.github.url + '" target="_blank" rel="noopener">' + s.github.org + '</a></div>' +
+        '<div class="row"><b>Repos públicos:</b> ' + s.github.info.repos + '</div>' +
+        '<div class="row"><b>Creada:</b> ' + (s.github.info.created ? s.github.info.created.slice(0, 10) : '—') + '</div>' +
+      '</div>'
+      : '';
+
+    const waybackHtml = s.wayback && (s.wayback.oldest || s.wayback.newest)
+      ? '<div class="co-block"><h4>Historial (Wayback Machine)</h4>' +
+        '<div class="row"><b>Primera copia:</b> ' + (s.wayback.oldest ? s.wayback.oldest[0] : '—') + '</div>' +
+        '<div class="row"><b>Última copia:</b> ' + (s.wayback.newest ? s.wayback.newest[0] : '—') + '</div>' +
+        '<div class="row"><span style="color:var(--muted)">Las versiones antiguas pueden contener configuraciones o archivos filtrados.</span></div>' +
+      '</div>'
+      : '';
+
+    const sitemapHtml = s.sitemap
+      ? '<div class="co-block"><h4>Sitemap</h4>' +
+        '<div class="row"><b>URLs indexadas:</b> ' + s.sitemap.urlCount + '</div>' +
+        (s.sitemap.interesting && s.sitemap.interesting.length
+          ? '<div class="row"><b>Rutas sensibles:</b></div><div class="row mono" style="font-size:.8rem">' + s.sitemap.interesting.join('<br>') + '</div>'
+          : '<div class="row">Sin rutas sensibles</div>') +
+      '</div>'
+      : '';
+
+    const ctSubs = (s.ctSubdomains || []).filter(x => !(s.subdomains || []).some(sd => sd.host === x));
+    const ctHtml = ctSubs.length
+      ? '<div class="co-block"><h4>Subdominios por certificados (CT)</h4>' +
+        '<div class="row mono" style="font-size:.82rem">' + ctSubs.slice(0, 20).map(x => '<div>• ' + x + '</div>').join('') + '</div>' +
+      '</div>'
+      : '';
+
     box.innerHTML =
       '<h3>🎯 Superficie de ataque (vista de un atacante)</h3>' +
       '<div class="co-grid">' +
@@ -858,10 +903,11 @@
         '<div class="co-block"><h4>Protección de email</h4>' + provider + mxHtml + nsHtml + '<table class="osint-table">' + emailRows + '</table></div>' +
         '<div class="co-block"><h4>Dominios relacionados (' + relDomains.length + ')</h4>' + relHtml + '</div>' +
       '</div>' +
-      '<div class="co-block" style="margin-top:16px"><h4>Emails de la empresa en brechas (' + ((s.breaches || []).length) + ')</h4>' + breachHtml + '</div>' +
+      '<div class="co-block" style="margin-top:16px"><h4>Emails de la empresa en brechas (' + ((s.breaches || []).length) + ')</h4>' + breachHtml + patternHtml + '</div>' +
       '<div class="co-grid" style="margin-top:16px">' +
         '<div class="co-block"><h4>Rutas sensibles (' + (s.exposed || []).length + ')</h4>' + exposedHtml + '</div>' +
         '<div class="co-block"><h4>Subdominios (' + (s.subdomains || []).length + ')</h4>' + subHtml + '</div>' +
+        ctHtml + jobsHtml + githubHtml + waybackHtml + sitemapHtml +
       '</div>' +
       sslHtml +
       '<h4 style="margin:20px 0 10px">Hallazgos</h4>' + findings;

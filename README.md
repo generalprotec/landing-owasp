@@ -46,7 +46,12 @@ El botón **"Superficie de ataque"** analiza lo que vería un atacante antes de 
 - **Dominios relacionados**: detecta otros dominios de la empresa desde los emails y el servidor MX, y comprueba su protección SPF/DMARC/DKIM.
 - **Emails en brechas**: comprueba todos los emails de la empresa en el API de filtraciones (xposedornot).
 - **Rutas sensibles**: busca `.git`, `.env`, volcados SQL, `phpinfo.php`, paneles (`/admin`, `/wp-admin`), etc.
-- **Subdominios**: enumera ~40 subdominios comunes (mail, api, admin, vpn, git, dev…) y detecta DNS comodín.
+- **Subdominios**: enumera ~40 subdominios comunes (mail, api, admin, vpn, git, dev…), detecta DNS comodín y añade subdominios descubiertos en **registros de certificados (CT logs** vía CertSpotter/crt.sh).
+- **Empleo y stack tecnológico**: detecta la página de ofertas de empleo y las tecnologías que revela.
+- **Repositorios públicos**: detecta la organización de GitHub de la empresa y su número de repos públicos.
+- **Historial (Wayback Machine)**: fecha de la primera y última copia archivada de la web.
+- **Sitemap**: URL indexadas y rutas sensibles que expone el sitemap.xml.
+- **Patrón de emails**: deduce si los correos siguen el patrón nombre.apellido (para prever phishing).
 - **Certificado TLS**: emisor, validez, días restantes y SANs.
 
 ## 📄 Informe PDF
