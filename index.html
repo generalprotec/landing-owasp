@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis de Seguridad Web — OWASP Top 10</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --bg-card: #121a33;
+    --bg-card-hover: #16203f;
+    --border: #1f2a4d;
+    --text: #e6ecff;
+    --muted: #93a1c8;
+    --accent: #4f8cff;
+    --accent2: #7a5cff;
+    --critico: #ff5c5c;
+    --alto: #ff9f43;
+    --medio: #ffd93d;
+    --verde: #3ddc97;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 800px at 70% -10%, #1b2a55 0%, var(--bg) 55%);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  header {
+    padding: 28px 0 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: .5px;
+  }
+
+  .brand .logo {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: grid; place-items: center;
+    font-size: 1.2rem;
+  }
+
+  .pill {
+    font-size: .8rem;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: rgba(18, 26, 51, .6);
+  }
+
+  .hero {
+    text-align: center;
+    padding: 40px 0 64px;
+  }
+
+  .hero .tag {
+    display: inline-block;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    border: 1px solid rgba(79, 140, 255, .35);
+    padding: 6px 16px;
+    border-radius: 999px;
+    margin-bottom: 22px;
+    background: rgba(79, 140, 255, .08);
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-weight: 800;
+    line-height: 1.15;
+    max-width: 800px;
+    margin: 0 auto 18px;
+  }
+
+  .hero h1 span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  .hero p {
+    color: var(--muted);
+    font-size: 1.1rem;
+    max-width: 640px;
+    margin: 0 auto 34px;
+  }
+
+  .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+  .btn {
+    padding: 14px 30px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: .98rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+  }
+
+  .btn:hover { transform: translateY(-2px); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    box-shadow: 0 8px 28px rgba(79, 140, 255, .35);
+  }
+
+  .btn-ghost {
+    border: 1px solid var(--border);
+    color: var(--text);
+    background: rgba(18, 26, 51, .5);
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin: 56px 0 80px;
+  }
+
+  .stat {
+    background: rgba(18, 26, 51, .55);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 16px;
+    text-align: center;
+  }
+
+  .stat b {
+    display: block;
+    font-size: 1.9rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .stat span { font-size: .85rem; color: var(--muted); }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 36px;
+  }
+
+  .section-title h2 { font-size: 1.7rem; font-weight: 700; }
+  .section-title .bar { width: 6px; height: 34px; border-radius: 6px; background: linear-gradient(180deg, var(--accent), var(--accent2)); }
+
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 30px; }
+
+  .filter {
+    font-size: .82rem;
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(18, 26, 51, .5);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .filter.active, .filter:hover { border-color: var(--accent); color: var(--text); background: rgba(79, 140, 255, .12); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 22px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 26px;
+    position: relative;
+    overflow: hidden;
+    transition: transform .18s, border-color .18s, background .18s;
+  }
+
+  .card:hover { transform: translateY(-4px); border-color: rgba(79, 140, 255, .55); background: var(--bg-card-hover); }
+
+  .card .num {
+    position: absolute;
+    top: -18px;
+    right: 10px;
+    font-size: 5.2rem;
+    font-weight: 900;
+    color: rgba(255, 255, 255, .045);
+    line-height: 1;
+    user-select: none;
+  }
+
+  .card .ico {
+    width: 46px; height: 46px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    font-size: 1.4rem;
+    margin-bottom: 16px;
+    background: rgba(79, 140, 255, .14);
+    border: 1px solid rgba(79, 140, 255, .25);
+  }
+
+  .card h3 { font-size: 1.12rem; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+
+  .card p { color: var(--muted); font-size: .92rem; }
+
+  .sev {
+    display: inline-block;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+
+  .sev.critico { background: rgba(255, 92, 92, .15); color: var(--critico); }
+  .sev.alto { background: rgba(255, 159, 67, .15); color: var(--alto); }
+  .sev.medio { background: rgba(255, 217, 61, .15); color: var(--medio); }
+
+  .examples {
+    margin-top: 16px;
+    font-size: .85rem;
+    color: var(--muted);
+    border-top: 1px dashed var(--border);
+    padding-top: 14px;
+  }
+
+  .examples b { color: var(--text); }
+
+  .howto { margin: 90px 0; }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    counter-reset: step;
+  }
+
+  .step {
+    background: rgba(18, 26, 51, .55);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+  }
+
+  .step::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: rgba(79, 140, 255, .18);
+  }
+
+  .step h4 { margin-bottom: 8px; font-size: 1rem; }
+  .step p { color: var(--muted); font-size: .9rem; }
+
+  .cta-final {
+    text-align: center;
+    background: linear-gradient(135deg, rgba(79, 140, 255, .12), rgba(122, 92, 255, .12));
+    border: 1px solid rgba(79, 140, 255, .3);
+    border-radius: 22px;
+    padding: 54px 30px;
+    margin-bottom: 70px;
+  }
+
+  .cta-final h2 { font-size: 1.8rem; margin-bottom: 12px; }
+  .cta-final p { color: var(--muted); margin-bottom: 26px; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 28px 0;
+    color: var(--muted);
+    font-size: .85rem;
+    text-align: center;
+  }
+
+  .scanner {
+    background: rgba(18, 26, 51, .55);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 44px 30px;
+    margin-bottom: 70px;
+    text-align: center;
+  }
+
+  .scanner h2 { font-size: 1.7rem; margin-bottom: 10px; }
+  .scanner p { color: var(--muted); margin-bottom: 26px; }
+
+  .scan-form {
+    display: flex;
+    gap: 12px;
+    max-width: 640px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+  }
+
+  .scan-form input {
+    flex: 1;
+    min-width: 260px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color .15s;
+  }
+
+  .scan-form input:focus { border-color: var(--accent); }
+  .scan-form input::placeholder { color: var(--muted); }
+
+  .scan-status { margin-top: 18px; color: var(--muted); font-size: .92rem; min-height: 1.5em; }
+  .scan-status.error { color: var(--critico); }
+
+  .results {
+    display: none;
+    text-align: left;
+    margin-top: 30px;
+    border-top: 1px dashed var(--border);
+    padding-top: 26px;
+  }
+
+  .results.visible { display: block; }
+
+  .result-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .result-head .target { font-weight: 700; font-size: 1.05rem; word-break: break-all; }
+  .result-head .target small { display: block; color: var(--muted); font-weight: 400; font-size: .82rem; }
+
+  .score-ring {
+    --pct: 0;
+    width: 92px; height: 92px;
+    border-radius: 50%;
+    background: conic-gradient(var(--accent) calc(var(--pct) * 1%), rgba(255,255,255,.08) 0);
+    display: grid; place-items: center;
+    position: relative;
+  }
+
+  .score-ring::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    background: var(--bg-card);
+  }
+
+  .score-ring b {
+    position: relative;
+    font-size: 1.4rem;
+    font-weight: 800;
+    z-index: 1;
+  }
+
+  .finding {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(18, 26, 51, .5);
+    border: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+
+  .finding .badge {
+    flex-shrink: 0;
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 8px;
+  }
+
+  .badge.critico { background: rgba(255, 92, 92, .18); color: var(--critico); }
+  .badge.alto { background: rgba(255, 159, 67, .18); color: var(--alto); }
+  .badge.medio { background: rgba(255, 217, 61, .18); color: var(--medio); }
+  .badge.bajo { background: rgba(79, 140, 255, .18); color: var(--accent); }
+  .badge.info { background: rgba(147, 161, 200, .18); color: var(--muted); }
+
+  .finding b { display: block; font-size: .92rem; margin-bottom: 2px; }
+  .finding p { color: var(--muted); font-size: .85rem; margin: 0; }
+
+  .card .card-findings { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 14px; }
+
+  .card-findings .tag-line { display: flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+
+  .tag-line .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .tag-line .dot.ok { background: var(--verde); box-shadow: 0 0 8px rgba(61, 220, 151, .7); }
+  .tag-line .dot.warn { background: var(--critico); box-shadow: 0 0 8px rgba(255, 92, 92, .7); }
+  .tag-line .dot.neutral { background: var(--muted); }
+
+  .card-findings ul { list-style: none; margin-top: 8px; }
+  .card-findings li { font-size: .82rem; color: var(--muted); padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .card-findings li::before { content: '• '; color: var(--critico); font-weight: 800; }
+  .card-findings li:last-child { border-bottom: none; }
+
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="brand"><span class="logo">🛡️</span> WebSec Auditor</div>
+  <span class="pill">Basado en OWASP Top 10 · 2021</span>
+</header>
+
+<section class="hero wrap">
+  <span class="tag">Análisis de vulnerabilidades</span>
+  <h1>Auditoría de seguridad web con el estándar <span>OWASP Top 10</span></h1>
+  <p>Detectamos las amenazas más críticas que ponen en riesgo tu web: accesos indebidos, inyecciones, datos expuestos y más. Un análisis claro de cada riesgo y cómo protegerse.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="#riesgos">Ver los 10 riesgos</a>
+    <a class="btn btn-ghost" href="#proceso">Cómo se analiza</a>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="stats">
+    <div class="stat"><b>10</b><span>Categorías de riesgo</span></div>
+    <div class="stat"><b>100+</b><span>Chequeos automatizados</span></div>
+    <div class="stat"><b>A01–A10</b><span>Clasificación OWASP</span></div>
+    <div class="stat"><b>3</b><span>Niveles de severidad</span></div>
+  </div>
+</section>
+
+<section id="riesgos" class="wrap">
+  <div class="section-title"><span class="bar"></span><h2>Los 10 riesgos de seguridad</h2></div>
+
+  <div class="filters">
+    <button class="filter active" data-f="all">Todos</button>
+    <button class="filter" data-f="critico">Críticos</button>
+    <button class="filter" data-f="alto">Altos</button>
+    <button class="filter" data-f="medio">Medios</button>
+  </div>
+
+  <div class="grid" id="grid">
+
+    <article class="card" data-sev="critico">
+      <span class="num">01</span>
+      <div class="ico">🔑</div>
+      <h3>A01 · Pérdida de Control de Acceso <span class="sev critico">Crítico</span></h3>
+      <p>Un usuario puede acceder a funciones de administrador o ver datos, facturas o perfiles de otros clientes modificando un ID en la URL.</p>
+      <div class="examples"><b>Qué revisamos:</b> Control de permisos, IDOR, elevación de privilegios, protección en rutas de API.</div>
+      <div class="card-findings" data-cat="A01"></div>
+    </article>
+
+    <article class="card" data-sev="critico">
+      <span class="num">02</span>
+      <div class="ico">🧬</div>
+      <h3>A02 · Fallos Criptográficos <span class="sev critico">Crítico</span></h3>
+      <p>Contraseñas guardadas en texto plano o con algoritmos obsoletos, transmisión por HTTP en lugar de HTTPS, o certificados TLS débiles o caducados.</p>
+      <div class="examples"><b>Qué revisamos:</b> Hashing de contraseñas, TLS/HTTPS, cifrado en tránsito y en reposo.</div>
+      <div class="card-findings" data-cat="A02"></div>
+    </article>
+
+    <article class="card" data-sev="critico">
+      <span class="num">03</span>
+      <div class="ico">💉</div>
+      <h3>A03 · Inyección (SQLi / XSS) <span class="sev critico">Crítico</span></h3>
+      <p>Inyecciones SQL en formularios de login o buscadores, inyección de comandos del sistema, o código malicioso ejecutado en el navegador de otras víctimas.</p>
+      <div class="examples"><b>Qué revisamos:</b> Consultas parametrizadas, sanitización de entradas, XSS reflejado y almacenado.</div>
+      <div class="card-findings" data-cat="A03"></div>
+    </article>
+
+    <article class="card" data-sev="alto">
+      <span class="num">04</span>
+      <div class="ico">🏗️</div>
+      <h3>A04 · Diseño Inseguro <span class="sev alto">Alto</span></h3>
+      <p>Fallos de arquitectura anteriores al código: cuentas de prueba ilimitadas, o precios de producto no validados en el servidor antes de cobrar.</p>
+      <div class="examples"><b>Qué revisamos:</b> Validación en servidor, límites de uso, lógica de negocio.</div>
+      <div class="card-findings" data-cat="A04"></div>
+    </article>
+
+    <article class="card" data-sev="alto">
+      <span class="num">05</span>
+      <div class="ico">⚙️</div>
+      <h3>A05 · Configuración de Seguridad Incorrecta <span class="sev alto">Alto</span></h3>
+      <p>Cuentas y contraseñas por defecto (admin/admin), errores de servidor que muestran código interno, puertos innecesarios abiertos o headers de seguridad ausentes.</p>
+      <div class="examples"><b>Qué revisamos:</b> Credenciales por defecto, headers, puertos expuestos, manejo de errores.</div>
+      <div class="card-findings" data-cat="A05"></div>
+    </article>
+
+    <article class="card" data-sev="alto">
+      <span class="num">06</span>
+      <div class="ico">📦</div>
+      <h3>A06 · Componentes Vulnerables y Desactualizados <span class="sev alto">Alto</span></h3>
+      <p>Librerías, plugins (WordPress) y dependencias JavaScript o PHP obsoletas o con vulnerabilidades (CVEs) conocidas.</p>
+      <div class="examples"><b>Qué revisamos:</b> Versiones de librerías, plugins y frameworks, CVEs conocidos.</div>
+      <div class="card-findings" data-cat="A06"></div>
+    </article>
+
+    <article class="card" data-sev="alto">
+      <span class="num">07</span>
+      <div class="ico">🔐</div>
+      <h3>A07 · Fallos de Identificación y Autenticación <span class="sev alto">Alto</span></h3>
+      <p>Ataques de fuerza bruta sin bloqueo de cuenta, contraseñas extremadamente débiles, o tokens de sesión (JWT) que nunca caducan.</p>
+      <div class="examples"><b>Qué revisamos:</b> Política de contraseñas, bloqueo por intentos, expiración de sesiones.</div>
+      <div class="card-findings" data-cat="A07"></div>
+    </article>
+
+    <article class="card" data-sev="medio">
+      <span class="num">08</span>
+      <div class="ico">🧬</div>
+      <h3>A08 · Fallos en la Integridad de Datos y Software <span class="sev medio">Medio</span></h3>
+      <p>Actualización de plugins desde fuentes no seguras, o deserialización insegura de objetos manipulados enviados por el navegador.</p>
+      <div class="examples"><b>Qué revisamos:</b> Origen de actualizaciones, firmas, validación de datos serializados.</div>
+      <div class="card-findings" data-cat="A08"></div>
+    </article>
+
+    <article class="card" data-sev="medio">
+      <span class="num">09</span>
+      <div class="ico">📊</div>
+      <h3>A09 · Fallos en el Registro y Monitoreo <span class="sev medio">Medio</span></h3>
+      <p>Inicios de sesión fallidos o intentos de inyección que no quedan registrados, sin alertas para que los administradores actúen a tiempo.</p>
+      <div class="examples"><b>Qué revisamos:</b> Logs de eventos críticos, alertas activas, respuesta ante incidentes.</div>
+      <div class="card-findings" data-cat="A09"></div>
+    </article>
+
+    <article class="card" data-sev="medio">
+      <span class="num">10</span>
+      <div class="ico">🌐</div>
+      <h3>A10 · SSRF (Server-Side Request Forgery) <span class="sev medio">Medio</span></h3>
+      <p>Funciones que leen URLs (como "importar imagen desde una URL") usadas para obligar al servidor a atacar otras webs o escanear la red interna.</p>
+      <div class="examples"><b>Qué revisamos:</b> Validación de URLs de entrada, restricción de red interna, listas blancas.</div>
+      <div class="card-findings" data-cat="A10"></div>
+    </article>
+
+  </div>
+</section>
+
+<section id="proceso" class="howto wrap">
+  <div class="section-title"><span class="bar"></span><h2>¿Cómo se analiza tu web?</h2></div>
+  <div class="steps">
+    <div class="step">
+      <h4>1. Reconocimiento</h4>
+      <p>Análisis de estructura, tecnologías y superficie de ataque de la web.</p>
+    </div>
+    <div class="step">
+      <h4>2. Escaneo automatizado</h4>
+      <p>Más de 100 chequeos distribuidos en las 10 categorías OWASP.</p>
+    </div>
+    <div class="step">
+      <h4>3. Verificación manual</h4>
+      <p>Los hallazgos se confirman para descartar falsos positivos.</p>
+    </div>
+    <div class="step">
+      <h4>4. Informe y remediación</h4>
+      <p>Reporte claro con severidad, impacto y pasos para corregir cada riesgo.</p>
+    </div>
+  </div>
+</section>
+
+<section id="analizar" class="wrap">
+  <div class="scanner">
+    <h2>¿Quieres saber si tu web es vulnerable?</h2>
+    <p>Introduce la URL de tu web y analizaremos los riesgos según el estándar OWASP Top 10.</p>
+    <form class="scan-form" id="scanForm">
+      <input type="text" id="urlInput" placeholder="https://tudominio.com" autocomplete="off" spellcheck="false" required>
+      <button class="btn btn-primary" type="submit" id="scanBtn">Analizar</button>
+    </form>
+    <div class="scan-status" id="scanStatus"></div>
+    <div class="results" id="results">
+      <div class="result-head">
+        <div class="target" id="resultTarget">—</div>
+        <div class="score-ring" id="scoreRing" style="--pct:0"><b id="scoreVal">–</b></div>
+      </div>
+      <div id="resultFindings"></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">WebSec Auditor · Análisis de seguridad basado en OWASP Top 10 (2021) · Uso educativo y preventivo</div>
+</footer>
+
+<script>
+  const buttons = document.querySelectorAll('.filter');
+  const cards = document.querySelectorAll('.card');
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.dataset.f;
+      cards.forEach(card => {
+        card.style.display = (f === 'all' || card.dataset.sev === f) ? '' : 'none';
+      });
+    });
+  });
+
+  const sevLabel = { critico: 'Crítico', alto: 'Alto', medio: 'Medio', bajo: 'Bajo', info: 'Info' };
+
+  function renderCardFindings(findings) {
+    cards.forEach(card => {
+      const box = card.querySelector('.card-findings');
+      if (!box) return;
+      const cat = box.dataset.cat;
+      const list = findings.filter(f => f.cat === cat);
+
+      let html;
+      if (list.length === 0) {
+        html = '<div class="tag-line"><span class="dot neutral"></span>Sin hallazgos detectados</div>';
+      } else {
+        const worst = list.reduce((a, f) => (['critico','alto','medio','bajo','info'].indexOf(f.sev) < ['critico','alto','medio','bajo','info'].indexOf(a) ? f.sev : a), 'info');
+        const dot = worst === 'info' ? 'neutral' : 'warn';
+        html = '<div class="tag-line"><span class="dot ' + dot + '"></span>' + list.length + ' hallazgo(s)</div>';
+        html += '<ul>' + list.map(f =>
+          '<li><b style="color:var(--text)">[' + sevLabel[f.sev] + ']</b> ' + f.title + '</li>'
+        ).join('') + '</ul>';
+      }
+      box.innerHTML = html;
+    });
+  }
+
+  const form = document.getElementById('scanForm');
+  const input = document.getElementById('urlInput');
+  const btn = document.getElementById('scanBtn');
+  const status = document.getElementById('scanStatus');
+  const results = document.getElementById('results');
+  const resultTarget = document.getElementById('resultTarget');
+  const resultFindings = document.getElementById('resultFindings');
+  const scoreRing = document.getElementById('scoreRing');
+  const scoreVal = document.getElementById('scoreVal');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = input.value.trim();
+    if (!url) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Analizando…';
+    status.textContent = 'Escaneando la web…';
+    status.classList.remove('error');
+
+    try {
+      const res = await fetch('/api/scan?url=' + encodeURIComponent(url));
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Error en el análisis');
+
+      results.classList.add('visible');
+      resultTarget.innerHTML = data.url + '<small>HTTP ' + data.meta.httpStatus + ' · ' + (data.meta.contentType || '') + '</small>';
+      scoreVal.textContent = data.score + '';
+      scoreRing.style.setProperty('--pct', data.score);
+      const color = data.score >= 80 ? 'var(--verde)' : data.score >= 50 ? 'var(--alto)' : 'var(--critico)';
+      scoreRing.style.background = 'conic-gradient(' + color + ' calc(' + data.score + ' * 1%), rgba(255,255,255,.08) 0)';
+
+      resultFindings.innerHTML = data.findings.map(f =>
+        '<div class="finding">' +
+          '<span class="badge ' + f.sev + '">' + sevLabel[f.sev] + '</span>' +
+          '<div><b>' + f.cat + ' · ' + f.title + '</b><p>' + f.desc + '</p></div>' +
+        '</div>'
+      ).join('') || '<p style="color:var(--verde)">No se han detectado hallazgos relevantes.</p>';
+
+      renderCardFindings(data.findings);
+      document.getElementById('riesgos').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) {
+      status.textContent = 'Error: ' + err.message;
+      status.classList.add('error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Analizar';
+    }
+  });
+</script>
+
+</body>
+</html>
