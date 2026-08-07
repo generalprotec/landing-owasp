@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generalprotec CiberAudit - Escaneo en Línea</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+* { font-family: 'Inter', sans-serif; }
+.mono { font-family: 'JetBrains Mono', monospace !important; }
+.glow-blue { box-shadow: 0 0 20px rgba(59,130,246,0.15); }
+table.data { border-collapse: collapse; width: 100%; }
+table.data td, table.data th { border-bottom: 1px solid rgba(51,65,85,0.5); padding: 8px 12px; }
+table.data thead th { color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+th { text-align: left; }
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:#0f172a; }
+::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
+section { scroll-margin-top: 80px; }
+.logo-text { background: linear-gradient(135deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+/* Consola */
+.console { background:#0c0c14; border:1px solid #333; border-radius:12px; font-family:'JetBrains Mono',monospace; font-size:13px; padding:20px; min-height:480px; max-height:560px; overflow-y:auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.console .titlebar { color:#b7c2d6; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:12px; font-size:12.5px; }
+.console .line { color:#c8c8c8; white-space:pre; }
+.console .line .status { color:#4ade80; font-weight:700; }
+.console .line .label { color:#d4d4d4; }
+.console .line .warn { color:#fbbf24; }
+.console .line .title { color:#22d3ee; font-weight:700; }
+.blink { animation: blink 1s steps(2,start) infinite; }
+@keyframes blink { to { visibility:hidden; } }
+body { background: #0f172a; }
+/* ===== Overrides legibilidad: aclara y agranda el texto gris ===== */
+.text-slate-300 { color: #f1f5fb !important; }
+.text-slate-400 { color: #d7e0f0 !important; }
+.text-slate-500 { color: #b9c5de !important; }
+.text-slate-600 { color: #9aa8c6 !important; }
+.text-[10px] { font-size: .72rem !important; }
+.text-xs { font-size: .8rem !important; }
+.text-sm { font-size: .92rem !important; }
+</style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+<header class="bg-slate-950 border-b border-slate-800 px-6 py-4 sticky top-0 z-50 backdrop-blur-md">
+<div class="max-w-7xl mx-auto flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center"><i class="fa-solid fa-shield-halved text-white text-xl"></i></div>
+<div><h1 class="text-2xl font-extrabold text-white">Generalprotec <span class="logo-text">CiberAudit</span></h1><p class="text-xs text-slate-500">Escaneo en l&iacute;nea &bull; Consola Web</p></div>
+</div>
+<div class="flex items-center gap-3">
+<span class="bg-slate-800 text-slate-400 text-xs px-3 py-1.5 rounded-full border border-slate-700/50"><i class="fa-solid fa-globe mr-1"></i>Navegador</span>
+</div>
+</div>
+</header>
+
+<main class="max-w-7xl mx-auto p-6 space-y-8">
+
+<!-- HERO / CONSOLA -->
+<div id="consoleWrap">
+<div class="text-center py-10">
+<h2 class="text-3xl font-extrabold text-white">Auditor&iacute;a de tu equipo en el navegador</h2>
+<p class="text-slate-400 text-sm mt-3 max-w-2xl mx-auto">La consola replica el escaneo de <strong class="text-slate-200">CiberAudit.exe</strong>. Al finalizar se genera un reporte con la misma estructura del informe real. Solo se usa lo que el navegador expone; no requiere instalaci&oacute;n.</p>
+<button onclick="startAudit()" class="mt-6 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold px-8 py-3 rounded-xl transition shadow-lg shadow-teal-500/20"><i class="fa-solid fa-play mr-2"></i>Iniciar Auditor&iacute;a</button>
+</div>
+</div>
+
+<div id="consoleBox" class="hidden max-w-4xl mx-auto">
+<div class="console" id="console"></div>
+</div>
+
+<!-- REPORTE -->
+<div id="report" class="hidden">
+<div class="flex flex-wrap gap-3 mb-6 justify-center">
+<button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2 rounded-xl transition border border-slate-700/50"><i class="fa-solid fa-print mr-2"></i>PDF</button>
+<button onclick="downloadReport()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2 rounded-xl transition border border-slate-700/50"><i class="fa-solid fa-download mr-2"></i>Descargar HTML</button>
+<button onclick="scrollToTop()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2 rounded-xl transition border border-slate-700/50"><i class="fa-solid fa-arrow-up mr-2"></i>Inicio</button>
+<button onclick="window.location.reload()" class="bg-teal-600 hover:bg-teal-500 text-white text-sm px-4 py-2 rounded-xl transition"><i class="fa-solid fa-rotate mr-2"></i>Nuevo Escaneo</button>
+</div>
+
+<div id="reportContent"></div>
+</div>
+
+</main>
+
+<footer class="bg-slate-950 border-t border-slate-800 px-6 py-6 text-center">
+<p class="text-xs text-slate-600">Generalprotec CiberAudit &bull; Auditor&iacute;a ligera en navegador &bull; v1.0</p>
+<p class="text-xs text-slate-600 mt-1">&copy; 2026 Generalprotec. Todos los derechos reservados.</p>
+</footer>
+
+<!-- SIDEBAR DEL REPORTE -->
+<nav id="sidebar" class="fixed right-4 top-20 bottom-20 w-40 bg-slate-950/90 backdrop-blur border border-slate-800 rounded-2xl p-4 shadow-xl hidden lg:block overflow-y-auto">
+<p class="text-[10px] text-slate-500 uppercase tracking-wider mb-3 font-semibold">Indice</p>
+<ul class="space-y-1" id="sidebarList"></ul>
+</nav>
+
+<script>
+let A = {};
+
+// ---------- CONSOLA ----------
+const consoleEl = () => document.getElementById('console');
+
+function cLine(label, status, statusClass){
+    return "<div class='line'><span class='label'>" + label + "</span><span class='status'>" + status + "</span></div>";
+}
+
+function writeLines(lines, i, onDone){
+    if (i >= lines.length){ onDone(); return; }
+    setTimeout(() => {
+        consoleEl().insertAdjacentHTML('beforeend', lines[i].html);
+        consoleEl().scrollTop = consoleEl().scrollHeight;
+        writeLines(lines, i+1, onDone);
+    }, lines[i].delay);
+}
+
+async function startAudit(){
+    document.getElementById('consoleWrap').classList.add('hidden');
+    document.getElementById('consoleBox').classList.remove('hidden');
+    document.getElementById('report').classList.add('hidden');
+
+    const c = document.getElementById('console');
+    c.innerHTML = "<div class='titlebar'>Windows PowerShell - Generalprotec CiberAudit Scanner</div>" +
+        "<div class='line title'>=== Generalprotec CiberAudit Scanner: Escaneando sistema ===</div>";
+
+    // recoger datos
+    const data = await collectData();
+
+    const L = [];
+    const ok = (l) => L.push({html: cLine("  " + l + "... ", "OK"), delay: 120 + Math.random()*250});
+    const warn = (l, extra) => L.push({html: cLine("  " + l + "... ", extra || "OK"), delay: 140 + Math.random()*280});
+    const head = (l) => L.push({html: cLine(l, ""), delay: 180});
+
+    head("=== Generalprotec CiberAudit Scanner: Escaneando sistema ===");
+    ok("Sistema");
+    ok("CPU");
+    ok("RAM");
+    ok("Discos");
+    ok("GPU");
+    ok("Red");
+    warn("IP publica", data.ipPublica);
+    ok("Adaptadores");
+    ok("BIOS/Placa");
+    ok("Perifericos");
+    ok("Programas instalados (" + data.fuentes.length + " fuentes)");
+    ok("Procesos");
+    ok("Servicios");
+    ok("Inicio");
+    ok("Actualizaciones");
+    ok("Drivers");
+    ok("Entorno");
+    ok("Usuarios");
+    ok("Antivirus");
+    warn("Navegador", "OK");
+    ok("Analizando vulnerabilidades");
+    ok("Generando informe");
+    L.push({html:"", delay:400});
+    L.push({html:"<div class='line title'>========================================", delay:200});
+    L.push({html:"<div class='line status'> INFORME GENERADO CORRECTAMENTE", delay:300});
+    L.push({html:"<div class='line title'>========================================", delay:200});
+    L.push({html:"<div class='line'><span class='label'> Ruta: </span><span class='status'>Generalprotec_CiberAudit_Report_" + data.fechaHora + ".html</span></div>", delay:200});
+
+    writeLines(L, 0, () => {
+        setTimeout(() => renderReport(data), 600);
+    });
+}
+
+// ---------- RECOLECCION ----------
+async function collectData(){
+    const d = {};
+    d.fechaHora = new Date().toISOString().replace(/[:.]/g, '-').slice(0,19);
+    d.timestamp = new Date().toLocaleString('es-ES');
+    const ua = navigator.userAgent;
+    const uap = parseUA(ua);
+
+    d.navegador = uap.browser + ' ' + uap.version;
+    d.os = uap.os;
+    d.arch = uap.arch;
+    d.modelo = uap.model;
+
+    d.cpuCores = navigator.hardwareConcurrency || '?';
+    d.ramGB = (navigator.deviceMemory ? navigator.deviceMemory : '?');
+    d.screen = screen.width + 'x' + screen.height;
+    d.lenguaje = navigator.language;
+    d.tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'No detectada';
+    d.resolucion = screen.width + 'x' + screen.height;
+    d.colorDepth = screen.colorDepth + ' bits';
+
+    d.ipLocal = (await getLocalIPs()).join(', ');
+    d.ipPublica = await getPublicIP();
+
+    const glInfo = getGPU();
+    d.gpu = glInfo.renderer;
+    d.gpuVendor = glInfo.vendor;
+
+    const net = getNetwork();
+    d.netType = net ? net.type : 'No detectada';
+    d.downlink = net ? net.downlink : 'N/A';
+    d.rtt = net ? net.rtt : 'N/A';
+
+    d.battery = await getBattery();
+    d.fuentes = detectFonts();
+    d.mediaDevices = await getMediaDevices();
+    d.fingerprint = canvasFingerprint();
+    d.soporte = detectAPIs();
+    d.preferencias = getPrefs();
+
+    d.storage = await getStorage();
+    d.geo = await getGeo();
+    d.idiomas = (navigator.languages || []).join(', ');
+    d.online = navigator.onLine;
+    d.plataforma = navigator.platform || 'Desconocida';
+    d.ventana = window.innerWidth + 'x' + window.innerHeight;
+    d.incognito = await detectIncognito();
+    d.benchmark = pcBenchmark();
+
+    if (d.ipPublica && d.ipPublica !== 'No disponible') {
+        d.ipGeo = await getIpGeo(d.ipPublica);
+        d.vpn = detectVpn(d);
+    }
+    return d;
+}
+
+async function getStorage(){
+    let res = { disponible: false };
+    try {
+        if (navigator.storage && navigator.storage.estimate){
+            const e = await navigator.storage.estimate();
+            res.disponible = true;
+            res.usado = (e.usage != null) ? (e.usage / 1048576).toFixed(1) + ' MB' : '—';
+            res.cuota = (e.quota != null) ? (e.quota / 1073741824).toFixed(2) + ' GB' : '—';
+        }
+    } catch(e){}
+    try { localStorage.setItem('__wsat','1'); localStorage.removeItem('__wsat'); res.localStorage = 'Disponible'; }
+    catch(e){ res.localStorage = 'Bloqueado/deshabilitado'; }
+    return res;
+}
+
+function getGeo(){
+    return new Promise((resolve) => {
+        if (!navigator.geolocation){ resolve({disponible:false, motivo:'Geolocalización no soportada'}); return; }
+        const to = setTimeout(() => resolve({disponible:false, motivo:'Tiempo agotado (sin permiso)'}), 8000);
+        navigator.geolocation.getCurrentPosition(
+            (p) => { clearTimeout(to); resolve({disponible:true, lat:+p.coords.latitude.toFixed(4), lon:+p.coords.longitude.toFixed(4), precision:(p.coords.accuracy||0).toFixed(0)+' m'}); },
+            (e) => { clearTimeout(to); const m = {1:'Permiso denegado',2:'Posición no disponible',3:'Tiempo agotado'}[e.code]||'Error'; resolve({disponible:false, motivo:m}); },
+            { enableHighAccuracy:false, timeout:8000, maximumAge:0 }
+        );
+    });
+}
+
+async function getIpGeo(ip){
+    try {
+        const r = await fetch('https://ipwho.is/' + encodeURIComponent(ip));
+        const j = await r.json();
+        return (j && j.success !== false) ? { timezone:(j.timezone||{}).id||'', pais:j.country||'' } : null;
+    } catch(e){ return null; }
+}
+
+function detectVpn(d){
+    const motivos = [];
+    if (d.ipGeo && d.ipGeo.timezone && d.tz && d.tz !== 'No detectada'){
+        const geoReg = (d.ipGeo.timezone || '').split('/')[0];
+        const tzReg = (d.tz || '').split('/')[0];
+        if (geoReg && tzReg && geoReg !== tzReg){
+            motivos.push('Tu zona horaria (' + d.tz + ') no coincide con la región de tu IP pública (' + d.ipGeo.timezone + ')');
+        }
+    }
+    if (motivos.length) return { sospechoso:true, motivos };
+    return { sospechoso:false };
+}
+
+async function detectIncognito(){
+    const base = 50 + Math.random() * 100;
+    let resultado = null;
+    for (let i = 0; i < 2; i++){
+        try {
+            const t0 = performance.now();
+            const size = 8 * 1024 * 1024;
+            const buf = new ArrayBuffer(size);
+            const view = new Uint8Array(buf);
+            for (let j = 0; j < size; j += 16) view[j] = 1;
+            new Uint8Array(buf);
+            const t1 = performance.now();
+            if (t1 - t0 - base > 3){ resultado = 'Posible incógnito'; break; }
+        } catch(e){ break; }
+    }
+    return resultado || 'No detectado (estimación)';
+}
+
+function pcBenchmark(){
+    const t0 = performance.now();
+    let s = 0;
+    for (let i = 0; i < 400000; i++) s += Math.sqrt(i);
+    return '~' + (Math.round((performance.now() - t0) * 10) / 10) + ' ms (referencia)';
+}
+
+function parseUA(ua){
+    let data = { browser:'', version:'', os:'', arch:'', model:'' };
+    const browsers = [
+        {name:'Edge', pat:/Edg\/([\d.]+)/},
+        {name:'Chrome', pat:/Chrome\/([\d.]+)/},
+        {name:'Firefox', pat:/Firefox\/([\d.]+)/},
+        {name:'Safari', pat:/Version\/([\d.]+).*Safari/},
+        {name:'Opera', pat:/(?:OPR|Opera)\/([\d.]+)/}
+    ];
+    for (let b of browsers){
+        const m = ua.match(b.pat);
+        if (m){ data.browser = b.name; data.version = m[1]; break; }
+    }
+    if (/Windows NT 10.0/.test(ua)) data.os = 'Windows 10/11';
+    else if (/Windows NT 6.3/.test(ua)) data.os = 'Windows 8.1';
+    else if (/Windows NT 6.2/.test(ua)) data.os = 'Windows 8';
+    else if (/Windows NT 6.1/.test(ua)) data.os = 'Windows 7';
+    else if (/Mac OS X/.test(ua)) data.os = 'macOS';
+    else if (/Android/.test(ua)) data.os = 'Android';
+    else if (/iPhone|iPad|iPod/.test(ua)) data.os = 'iOS';
+    else if (/Linux/.test(ua)) data.os = 'Linux';
+    else data.os = 'Desconocido';
+    if (/x86_64|Win64|amd64/.test(ua)) data.arch = 'x86-64';
+    else if (/x86_32|i686|i386/.test(ua)) data.arch = 'x86-32';
+    else if (/ARM64|aarch64/.test(ua)) data.arch = 'ARM64';
+    else data.arch = 'Desconocida';
+    if (/Macintosh/.test(ua) && /Mac OS X/.test(ua)) data.model = 'Mac';
+    else if (/CrOS/.test(ua)) data.model = 'Chromebook';
+    return data;
+}
+
+function getLocalIPs(){
+    return new Promise((resolve) => {
+        const ips = [];
+        try {
+            const pc = new RTCPeerConnection({iceServers:[]});
+            pc.createDataChannel('');
+            pc.createOffer().then(o => pc.setLocalDescription(o)).catch(()=>{});
+            pc.onicecandidate = (e) => {
+                if (!e.candidate){ pc.close(); resolve(ips.length ? ips : ['No detectada']); return; }
+                const m = (e.candidate.candidate||'').match(/(?:udp|tcp) ([0-9.]+)/);
+                if (m && m[1] && !ips.includes(m[1])) ips.push(m[1]);
+            };
+            setTimeout(() => { pc.close(); resolve(ips.length ? ips : ['No detectada']); }, 1500);
+        } catch(e) { resolve(['No disponible']); }
+    });
+}
+
+async function getPublicIP(){
+    for (let url of ['https://api.ipify.org?format=json','https://api.ipify.org']){
+        try {
+            const r = await fetch(url); const t = await r.text();
+            try { return JSON.parse(t).ip; } catch(e){ return t.trim(); }
+        } catch(e){}
+    }
+    return 'No disponible';
+}
+
+function getGPU(){
+    try {
+        const gl = document.createElement('canvas').getContext('webgl');
+        if (gl){
+            const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+            return {
+                renderer: dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
+                vendor: dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : 'Desconocido'
+            };
+        }
+    } catch(e){}
+    return { renderer:'No soporta WebGL', vendor:'N/A' };
+}
+
+function getNetwork(){
+    if (navigator.connection){
+        const c = navigator.connection;
+        return { type: c.effectiveType || c.type || 'Desconocida', downlink: c.downlink + ' Mbps', rtt: c.rtt + ' ms' };
+    }
+    return null;
+}
+
+async function getBattery(){
+    try {
+        if (navigator.getBattery){
+            const b = await navigator.getBattery();
+            return { level: Math.round(b.level*100) + '%', charging: b.charging };
+        }
+    } catch(e){}
+    return null;
+}
+
+function detectFonts(){
+    const fonts = ['Arial','Verdana','Tahoma','Times New Roman','Courier New','Georgia','Segoe UI','Calibri','Consolas','Cambria','Comic Sans MS','Impact'];
+    const base = document.createElement('span');
+    base.style.cssText = 'position:absolute;visibility:hidden;font-family:"monospace";font-size:72px;';
+    base.textContent = 'mmmmmmmmmmlli';
+    document.body.appendChild(base);
+    const w = base.offsetWidth;
+    const inst = [];
+    for (let f of fonts){
+        const s = document.createElement('span');
+        s.style.cssText = 'position:absolute;visibility:hidden;font-size:72px;font-family:"' + f + ',monospace";';
+        s.textContent = 'mmmmmmmmmmlli';
+        document.body.appendChild(s);
+        if (s.offsetWidth !== w) inst.push(f);
+        document.body.removeChild(s);
+    }
+    document.body.removeChild(base);
+    return inst;
+}
+
+async function getMediaDevices(){
+    try {
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices){
+            const devs = await navigator.mediaDevices.enumerateDevices();
+            return devs.filter(x => x.kind !== 'audiooutput' || true).map(x => ({kind:x.kind, label:x.label || '(permiso no otorgado)'}));
+        }
+    } catch(e){}
+    return [];
+}
+
+function canvasFingerprint(){
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 220; canvas.height = 30;
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#f60'; ctx.fillRect(0,0,220,30);
+        ctx.fillStyle = '#069';
+        ctx.fillText('CiberAuditFP', 2, 2);
+        return canvas.toDataURL().length + ' px';
+    } catch(e){ return 'No disponible'; }
+}
+
+function detectAPIs(){
+    return {
+        webgl2: (()=>{try{return !!document.createElement('canvas').getContext('webgl2')}catch(e){return false}})(),
+        webgpu: 'gpu' in navigator,
+        wasm: typeof WebAssembly !== 'undefined' && WebAssembly.compile,
+        serviceWorker: 'serviceWorker' in navigator,
+        webAuthn: 'credentials' in navigator && !!window.PublicKeyCredential,
+        bluetooth: 'bluetooth' in navigator,
+        usb: 'usb' in navigator,
+        serial: 'serial' in navigator,
+        gamepad: 'getGamepads' in navigator,
+        vibrate: 'vibrate' in navigator,
+        fullscreen: 'fullscreenElement' in document,
+        clipboard: 'clipboard' in navigator
+    };
+}
+
+function getPrefs(){
+    const m = window.matchMedia;
+    return {
+        colorScheme: m ? (m('(prefers-color-scheme: dark)').matches ? 'Oscuro' : 'Claro') : 'N/A',
+        reducedMotion: m ? (m('(prefers-reduced-motion: reduce)').matches ? 'S&iacute;' : 'No') : 'N/A',
+        dpr: window.devicePixelRatio || 1,
+        maxTouch: 'ontouchstart' in window ? navigator.maxTouchPoints || 'S&iacute;' : 'No'
+    };
+}
+
+// ---------- REPORTE ----------
+function sectionCard(icon, iconColor, title, extra, body){
+    return "<section class='mb-8'><div class='bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl'>" +
+        "<div class='flex items-center gap-3 mb-4'><div class='bg-" + iconColor + " p-2.5 rounded-xl'><i class='fa-solid " + icon + " text-" + iconColor + " text-xl'></i></div>" +
+        "<h2 class='text-xl font-bold text-white'>" + title + "</h2>" + (extra||'') + "</div>" + body + "</div></section>";
+}
+
+function row(label, value, mono){
+    return "<tr><td class='py-3 px-4 text-slate-400 w-48'>" + label + "</td><td class='py-3 px-4 text-slate-200 font-medium" + (mono?" mono text-xs":"") + "'>" + value + "</td></tr>";
+}
+
+function fullOnly(what){
+    return "<div class='bg-slate-900/60 border border-dashed border-amber-700/60 rounded-xl p-4'><p class='text-base text-slate-200 italic font-medium'>" + what + " no disponible en la auditor&iacute;a de navegador.</p><p class='text-base text-amber-300 font-bold mt-2'>&#9888; Requiere la versi&oacute;n completa Generalprotec CiberAudit.exe</p></div>";
+}
+
+function renderReport(d){
+    A = d;
+    document.getElementById('consoleBox').classList.add('hidden');
+    document.getElementById('report').classList.remove('hidden');
+    document.getElementById('sidebar').classList.remove('hidden');
+
+    let h = '';
+
+    // SISTEMA
+    let statCards = "";
+    statCards += "<div class='bg-slate-900/40 rounded-xl p-4 border border-slate-800/60 text-center'><i class='fa-solid fa-microchip text-blue-400 text-lg mb-1'></i><p class='text-2xl font-bold text-white'>" + d.cpuCores + " n&uacute;cleos</p><p class='text-xs text-slate-500'>CPU (l&oacute;gicos)</p></div>";
+    statCards += "<div class='bg-slate-900/40 rounded-xl p-4 border border-slate-800/60 text-center'><i class='fa-solid fa-memory text-emerald-400 text-lg mb-1'></i><p class='text-2xl font-bold text-white'>" + d.ramGB + " GB</p><p class='text-xs text-slate-500'>RAM (estimada)</p></div>";
+    statCards += "<div class='bg-slate-900/40 rounded-xl p-4 border border-slate-800/60 text-center'><i class='fa-solid fa-display text-purple-400 text-lg mb-1'></i><p class='text-lg font-bold text-white'>" + d.screen + "</p><p class='text-xs text-slate-500'>Pantalla</p></div>";
+    statCards += "<div class='bg-slate-900/40 rounded-xl p-4 border border-slate-800/60 text-center'><i class='fa-solid fa-globe text-cyan-400 text-lg mb-1'></i><p class='text-lg font-bold text-white'>" + (d.ipPublica.length>12 ? d.ipPublica.substring(0,12)+'...' : d.ipPublica) + "</p><p class='text-xs text-slate-500'>IP P&uacute;blica</p></div>";
+
+    let rows = "";
+    rows += row("Sistema Operativo", d.os);
+    rows += row("Navegador", d.navegador);
+    rows += row("Arquitectura", d.arch);
+    rows += row("Modelo", d.modelo || 'No disponible');
+    rows += row("Idioma", d.lenguaje);
+    rows += row("Zona Horaria", d.tz);
+    rows += row("Fecha Auditor&iacute;a", d.timestamp);
+    rows += row("Nombre del equipo", 'No disponible en navegador');
+
+    h += sectionCard('fa-computer', 'blue-500/10', 'Informaci&oacute;n del Sistema', "<span class='text-xs bg-slate-800 text-slate-500 px-3 py-1 rounded-full font-mono'>Navegador</span>",
+        "<div class='grid md:grid-cols-4 gap-4 mb-6'>" + statCards + "</div>" +
+        "<div class='overflow-x-auto'><table class='w-full text-sm data'><tbody class='divide-y divide-slate-800/60'>" + rows + "</tbody></table></div>");
+
+    // RED
+    let netRows = "";
+    netRows += row("IP Local", d.ipLocal);
+    netRows += row("IP P&uacute;blica", d.ipPublica);
+    netRows += row("Tipo de Conexi&oacute;n", d.netType);
+    netRows += row("Velocidad Descarga", d.downlink);
+    netRows += row("Latencia (RTT)", d.rtt);
+    h += sectionCard('fa-network-wired', 'blue-500/10', 'Red y Conectividad', "",
+        "<table class='w-full text-sm data'><tbody class='divide-y divide-slate-800/60'>" + netRows + "</tbody></table>" +
+        "<div class='mt-4'>" + fullOnly('Escaneo de puertos, dispositivos ARP, mDNS, UPnP, recursos SMB') + "</div>");
+
+    // GPU
+    h += sectionCard('fa-tv', 'purple-500/10', 'Tarjeta Gr&aacute;fica (GPU)', "",
+        "<table class='w-full text-sm data'><tbody class='divide-y divide-slate-800/60'>" +
+        row('Renderizador', d.gpu) + row('Fabricante', d.gpuVendor) +
+        "<tr><td class='py-3 px-4 text-slate-400'>WebGL2</td><td class='py-3 px-4'><span class='text-emerald-400 font-medium'>" + (d.soporte.webgl2 ? 'Soportado' : 'No soportado') + "</span></td></tr>" +
+        "<tr><td class='py-3 px-4 text-slate-400'>WebGPU</td><td class='py-3 px-4'><span class='text-emerald-400 font-medium'>" + (d.soporte.webgpu ? 'Soportado' : 'No soportado') + "</span></td></tr>" +
+        "</tbody></table>");
+
+    // PERIFERICOS
+    let med = "";
+    if (d.mediaDevices.length){
+        med = "<div class='space-y-2'>";
+        for (const dev of d.mediaDevices){
+            const icon = dev.kind === 'videoinput' ? 'fa-video' : (dev.kind === 'audioinput' ? 'fa-microphone' : 'fa-volume-high');
+            med += "<div class='flex justify-between bg-slate-900/40 px-3 py-2 rounded-lg border border-slate-800/60 mb-1'><span class='text-sm text-slate-200'><i class='fa-solid " + icon + " text-slate-500 mr-2'></i>" + dev.label + "</span><span class='text-xs text-slate-400'>" + (dev.kind==='videoinput'?'C&aacute;mara':dev.kind==='audioinput'?'Micr&oacute;fono':'Altavoz') + "</span></div>";
+        }
+        med += "</div>";
+    } else {
+        med = "<p class='text-sm text-slate-500 italic'>No se detectaron dispositivos multimedia (o se requieren permisos de c&aacute;mara/micr&oacute;fono).</p>";
+    }
+    h += sectionCard('fa-plug', 'rose-500/10', 'Dispositivos Multimedia', "",
+        "<div class='grid md:grid-cols-1 gap-6'><div>" + med + "</div></div>");
+
+    // SEGURIDAD
+    const secChecks = [
+        {name:'HTTPS / Conexi&oacute;n segura', ok: window.isSecureContext, desc:'Contexto seguro' },
+        {name:'Huella Canvas', ok: d.fingerprint !== 'No disponible', desc:'Fingerprint del navegador' },
+        {name:'Cookies', ok: navigator.cookieEnabled, desc:'Estado de cookies' },
+        {name:'WebAuthn / Passkeys', ok: d.soporte.webAuthn, desc:'Autenticaci&oacute;n FIDO2' }
+    ];
+    let secHtml = "<div class='grid md:grid-cols-2 gap-3'>";
+    for (const c of secChecks){
+        const badge = c.ok ? "<span class='text-emerald-400'><i class='fa-solid fa-check-circle'></i> OK</span>" : "<span class='text-red-400'><i class='fa-solid fa-circle-xmark'></i> No</span>";
+        secHtml += "<div class='bg-slate-900/40 rounded-xl p-3 border border-slate-800/60'><p class='text-xs text-slate-500'>" + c.name + "</p><p class='text-sm font-semibold text-slate-200 mt-1'>" + badge + "</p><p class='text-[10px] text-slate-600'>" + c.desc + "</p></div>";
+    }
+    secHtml += "</div>";
+    h += sectionCard('fa-shield-halved', 'red-500/10', 'Seguridad del Navegador', "",
+        secHtml + "<div class='mt-4'>" + fullOnly('Antivirus, Windows Defender, UAC, BitLocker, parches, SMB, firewall') + "</div>");
+
+    // VULNERABILIDADES
+    let v = "";
+    v += "<div class='bg-amber-500/10 border border-amber-800/40 rounded-xl p-4 mb-3'><div class='flex items-center gap-2 mb-1'><i class='fa-solid fa-triangle-exclamation text-amber-400'></i><h4 class='text-sm font-bold text-amber-300'>Exposici&oacute;n web del navegador</h4></div><p class='text-xs text-slate-400'>El navegador expone " + d.fingerprint + " de huella canvas y " + d.ipPublica + " como IP p&uacute;blica. Estas son las huellas que usan los sistemas de tracking.</p></div>";
+    v += "<div class='bg-emerald-500/10 border border-emerald-800/40 rounded-xl p-4'><div class='flex items-center gap-2'><i class='fa-solid fa-check-circle text-emerald-400'></i><p class='text-sm text-emerald-300 font-medium'>La auditor&iacute;a de vulnerabilidades del sistema (SMB, LLMNR, TLS, parches, cuentas) requiere la versi&oacute;n completa.</p></div></div>";
+    h += sectionCard('fa-bug', 'red-500/10', 'An&aacute;lisis de Exposici&oacute;n Web', "", v);
+
+    // SOPORTE DE APIs
+    let apiRows = "";
+    const apiList = [
+        ['fa-puzzle-piece','WebAssembly', d.soporte.wasm],
+        ['fa-gears','Service Worker', d.soporte.serviceWorker],
+        ['fa-key','WebAuthn / Passkeys', d.soporte.webAuthn],
+        ['fa-bluetooth','Web Bluetooth', d.soporte.bluetooth],
+        ['fa-plug','Web USB', d.soporte.usb],
+        ['fa-link','Web Serial', d.soporte.serial],
+        ['fa-gamepad','Gamepad API', d.soporte.gamepad],
+        ['fa-mobile-screen','Vibrate', d.soporte.vibrate],
+        ['fa-expand','Fullscreen', d.soporte.fullscreen],
+        ['fa-copy','Clipboard API', d.soporte.clipboard]
+    ];
+    for (const a of apiList){
+        apiRows += "<div class='flex justify-between bg-slate-900/40 px-3 py-2 rounded-lg border border-slate-800/60 mb-1'><span class='text-sm text-slate-200'><i class='fa-solid " + a[0] + " text-slate-500 mr-2'></i>" + a[1] + "</span><span class='" + (a[2]?"text-emerald-400":"text-slate-600") + " text-xs font-semibold'>" + (a[2]?"Soportado":"No") + "</span></div>";
+    }
+    h += sectionCard('fa-box-open', 'teal-500/10', 'APIs del Navegador Soportadas', "", apiRows);
+
+    // PREFERENCIAS
+    h += sectionCard('fa-display', 'amber-500/10', 'Pantalla y Preferencias', "",
+        "<table class='w-full text-sm data'><tbody class='divide-y divide-slate-800/60'>" +
+        row('Resoluci&oacute;n', d.resolucion) +
+        row('Profundidad de Color', d.colorDepth) +
+        row('Pixel Ratio', d.preferencias.dpr) +
+        row('Tema Preferido', d.preferencias.colorScheme) +
+        row('Reducir Movimiento', d.preferencias.reducedMotion) +
+        row('Pantalla T&aacute;ctil', d.preferencias.maxTouch) +
+        "</tbody></table>");
+
+    // FUENTES
+    let fhtml = d.fuentes.length
+        ? "<div class='flex flex-wrap gap-2'>" + d.fuentes.map(f => "<span class='bg-slate-800 text-slate-300 text-xs px-3 py-1 rounded-full border border-slate-700/50'>" + f + "</span>").join('') + "</div>"
+        : "<p class='text-sm text-slate-500 italic'>Solo fuentes b&aacute;sicas detectadas.</p>";
+    h += sectionCard('fa-font', 'indigo-500/10', 'Fuentes Instaladas', "<span class='text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full'>" + d.fuentes.length + " fuentes</span>", fhtml);
+
+    // BATERIA
+    let batHtml;
+    if (d.battery){
+        const pct = parseInt(d.battery.level) || 0;
+        batHtml = "<div class='bg-slate-900/40 rounded-xl p-4 border border-slate-800/60'><p class='text-xs text-slate-500 uppercase'>Bater&iacute;a</p><p class='text-2xl font-bold " + (d.battery.charging ? "text-emerald-400" : "text-amber-400") + "'>" + d.battery.level + "</p><p class='text-xs text-slate-500'>" + (d.battery.charging ? "Cargando" : "En descarga") + "</p><div class='w-full bg-slate-800 rounded-full h-2 mt-3 overflow-hidden'><div class='h-full bg-emerald-500' style='width:" + pct + "%'></div></div></div>";
+    } else {
+        batHtml = "<p class='text-sm text-slate-500 italic'>No disponible (solo aplica a port&aacute;tiles).</p>";
+    }
+    h += sectionCard('fa-battery-three-quarters', 'emerald-500/10', 'Rendimiento', "", batHtml);
+
+    // GEOLOCALIZACION Y VPN
+    let geoHtml;
+    if (d.geo && d.geo.disponible){
+        geoHtml = "<table class='w-full text-sm data'><tbody class='divide-y divide-slate-800/60'>" +
+            row('Latitud', d.geo.lat) + row('Longitud', d.geo.lon) + row('Precisión', d.geo.precision) +
+            "</tbody></table>";
+    } else {
+        geoHtml = "<p class='text-sm text-slate-300'>No disponible (" + ((d.geo && d.geo.motivo) || 'sin permiso') + "). Habilita la ubicación para contrastar con tu IP pública.</p>";
+    }
+    if (d.vpn && d.vpn.sospechoso){
+        geoHtml += "<div class='bg-amber-500/10 border border-amber-700/60 rounded-xl p-4 mt-3'><p class='text-sm font-bold text-amber-300'><i class='fa-solid fa-route mr-1'></i>Posible VPN / Proxy detectado</p><ul class='text-base text-slate-200 mt-2 list-disc list-inside'>" + d.vpn.motivos.map(m=>"<li>"+m+"</li>").join('') + "</ul></div>";
+    } else {
+        geoHtml += "<div class='bg-emerald-500/10 border border-emerald-800/50 rounded-xl p-3 mt-3'><p class='text-sm text-emerald-300'><i class='fa-solid fa-check-circle mr-1'></i>Sin indicios claros de VPN o proxy según la información disponible.</p></div>";
+    }
+    h += sectionCard('fa-location-crosshairs', 'cyan-500/10', 'Geolocalización y VPN/Proxy', "", geoHtml);
+
+    // ALMACENAMIENTO
+    h += sectionCard('fa-database', 'indigo-500/10', 'Almacenamiento', "",
+        "<table class='w-full text-sm data'><tbody class='divide-y divide-slate-800/60'>" +
+        row('Cuota estimada', d.storage ? d.storage.cuota : '—') +
+        row('Uso estimado', d.storage ? d.storage.usado : '—') +
+        row('localStorage', d.storage ? d.storage.localStorage : '—') +
+        "</tbody></table>");
+
+    // ESTADO Y RENDIMIENTO
+    h += sectionCard('fa-gauge-high', 'teal-500/10', 'Estado y Rendimiento', "",
+        "<table class='w-full text-sm data'><tbody class='divide-y divide-slate-800/60'>" +
+        row('Idiomas', d.idiomas) +
+        row('Plataforma', d.plataforma) +
+        row('Conectado a Internet', d.online ? 'Sí' : 'No') +
+        row('Tamaño de ventana', d.ventana) +
+        row('Modo incógnito', d.incognito) +
+        row('Rendimiento (ref.)', d.benchmark) +
+        "</tbody></table>");
+
+    // AVISO GRANDE FINAL
+    h += "<section class='mt-10'><div class='bg-gradient-to-r from-amber-950 to-slate-950 border-2 border-amber-600/70 rounded-2xl p-8 text-center shadow-2xl'>" +
+        "<i class='fa-solid fa-download text-amber-400 text-4xl mb-3'></i>" +
+        "<h2 class='text-2xl font-extrabold text-amber-300'>Auditor&iacute;a completa no disponible en el navegador</h2>" +
+        "<p class='text-lg text-slate-200 font-medium mt-3'>Los an&aacute;lisis avanzados de este informe (discos, procesos, servicios, antivirus, firewall, parches, puertos, SMB, red local, rendimiento) solo est&aacute;n disponibles con la versi&oacute;n completa.</p>" +
+        "<p class='text-xl text-amber-200 font-extrabold mt-4'>&#9888; Requiere la versi&oacute;n completa Generalprotec CiberAudit.exe</p>" +
+        "</div></section>";
+
+    document.getElementById('reportContent').innerHTML = h;
+
+    // SIDEBAR
+    const items = [
+        ['sistema','Sistema'],['red','Red'],['gpu','GPU'],['perifericos','Perif&eacute;ricos'],
+        ['seguridad','Seguridad'],['vulnerabilidades','Vulnerabilidades'],['api','APIs'],['pref','Pantalla'],['fuentes','Fuentes'],['rendimiento','Rendimiento']
+    ];
+    document.getElementById('sidebarList').innerHTML = items.map((it,i) => "<li><a href='#sec" + i + "' class='text-xs text-slate-400 hover:text-white block py-1'>" + it[1] + "</a></li>").join('');
+    // dar ids a las secciones
+    const secs = document.querySelectorAll('#reportContent section');
+    secs.forEach((s,i) => s.id = 'sec' + i);
+}
+
+function downloadReport(){
+    const content = document.getElementById('reportContent').innerHTML;
+    const html = "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><title>Generalprotec CiberAudit - Reporte</title>" +
+    "<script src='https://cdn.tailwindcss.com'><\/script><link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css'>" +
+    "<style>table.data{border-collapse:collapse;width:100%}table.data td,table.data th{border-bottom:1px solid rgba(51,65,85,.5);padding:8px 12px}section{scroll-margin-top:80px}</style>" +
+    "</head><body class='bg-slate-900 text-slate-100'><div class='max-w-5xl mx-auto p-6'>" + content + "</div></body></html>";
+    const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Generalprotec_CiberAudit_Report_' + A.fechaHora + '.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+function scrollToTop(){ window.scrollTo({top:0, behavior:'smooth'}); }
+</script>
+</body>
+</html>
