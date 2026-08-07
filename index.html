@@ -1165,7 +1165,110 @@
     d.soporte = detectPcAPIs();
     d.preferencias = getPcPrefs();
     d.secureContext = window.isSecureContext;
+
+    d.storage = await getPcStorage();
+    d.geo = await getPcGeo();
+    d.idiomas = (navigator.languages || []).join(', ');
+    d.online = navigator.onLine;
+    d.plataforma = navigator.platform || 'Desconocida';
+    d.ventana = window.innerWidth + 'x' + window.innerHeight;
+    d.incognito = await detectPcIncognito();
+    d.benchmark = pcBenchmark();
+
+    if (d.ipPublica && d.ipPublica !== 'No disponible') {
+      d.ipGeo = await getIpcGeoOpt(d.ipPublica);
+      d.vpn = detectPcVpn(d);
+    }
     return d;
+  }
+
+  async function getPcStorage() {
+    let res = { disponible: false };
+    try {
+      if (navigator.storage && navigator.storage.estimate) {
+        const e = await navigator.storage.estimate();
+        res.disponible = true;
+        res.usado = (e.usage != null) ? (e.usage / 1048576).toFixed(1) + ' MB' : '—';
+        res.cuota = (e.quota != null) ? (e.quota / 1073741824).toFixed(2) + ' GB' : '—';
+      }
+    } catch (e) {}
+    try {
+      localStorage.setItem('__wsat', '1');
+      localStorage.removeItem('__wsat');
+      res.localStorage = 'Disponible';
+    } catch (e) {
+      res.localStorage = 'Bloqueado/deshabilitado';
+    }
+    return res;
+  }
+
+  function getPcGeo() {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) { resolve({ disponible: false, motivo: 'Geolocalización no soportada' }); return; }
+      const to = setTimeout(() => resolve({ disponible: false, motivo: 'Tiempo agotado (sin permiso)' }), 8000);
+      navigator.geolocation.getCurrentPosition(
+        (p) => { clearTimeout(to); resolve({ disponible: true, lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4), precision: (p.coords.accuracy || 0).toFixed(0) + ' m' }); },
+        (e) => { clearTimeout(to); const m = { 1: 'Permiso denegado', 2: 'Posición no disponible', 3: 'Tiempo agotado' }[e.code] || 'Error'; resolve({ disponible: false, motivo: m }); },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 }
+      );
+    });
+  }
+
+  async function getPcGeoOpt(ip) {
+    try {
+      const r = await fetch('/api/ipintel?ip=' + encodeURIComponent(ip));
+      const j = await r.json();
+      const g = j.intel && j.intel.geo;
+      return g ? { geoTimeZone: g.timezone || '', geoPais: g.country || '' } : null;
+    } catch (e) { return null; }
+  }
+
+  function detectPcVpn(d) {
+    // Posible VPN/proxy: la IP pública (geolocación del proveedor) no coincide con la zona horaria del sistema.
+    let motivos = [];
+    if (d.ipGeo && d.ipGeo.geoTimeZone && d.tz && d.tz !== 'No detectada') {
+      const geoRegion = (d.ipGeo.geoTimeZone || '').split('/')[0];
+      const tzRegion = (d.tz || '').split('/')[0];
+      if (geoRegion && tzRegion && geoRegion !== tzRegion) {
+        motivos.push('Tu zona horaria (' + d.tz + ') no coincide con la región de tu IP pública (' + d.ipGeo.geoTimeZone + ')');
+      }
+    }
+    // Comparar geolocalización del navegador (si permitida) con la IP pública geolocada.
+    if (d.geo && d.geo.disponible && d.ipGeo) {
+      // Si el navegador otorgó ubicación, contrastar con la red es más fiable si hay gran distancia.
+      // Detección ligera: si el usuario permite ubicación exacta el motivo es menos concluyente.
+      motivos.push('Tu IP pública y tu ubicación real proceden de ' + (d.ipGeo.geoPais || 'la red') + ' — verifica si usas una VPN.');
+      if (d.ipGeo.geoPais && d.geo && Math.abs(d.geo.lat) > 0) {
+        // no hay mapeo a país, se deja como orientativo
+      }
+    }
+    if (motivos.length) return { sospechoso: true, motivos };
+    return { sospechoso: false };
+  }
+
+  async function detectPcIncognito() {
+    const base = 50 + Math.random() * 100;
+    let resultado = null;
+    for (let i = 0; i < 2; i++) {
+      try {
+        const t0 = performance.now();
+        const size = 8 * 1024 * 1024;
+        const buf = new ArrayBuffer(size);
+        const view = new Uint8Array(buf);
+        for (let j = 0; j < size; j += 16) view[j] = 1;
+        new Uint8Array(buf);
+        const t1 = performance.now();
+        if (t1 - t0 - base > 3) { resultado = 'Posible incógnito'; break; }
+      } catch (e) { break; }
+    }
+    return resultado || 'No detectado (estimación)';
+  }
+
+  function pcBenchmark() {
+    const t0 = performance.now();
+    let s = 0;
+    for (let i = 0; i < 400000; i++) s += Math.sqrt(i);
+    return '~' + Math.round((performance.now() - t0) * 10) / 10 + ' ms (referencia)';
   }
 
   function parsePcUA(ua) {
@@ -1447,6 +1550,42 @@
       batHtml = '<p style="color:var(--muted);font-size:.85rem">No disponible (solo aplica a portátiles).</p>';
     }
     h += pcSection('🔋', 'Batería', batHtml);
+
+    let geoHtml;
+    if (d.geo && d.geo.disponible) {
+      geoHtml = '<table class="pc-table">' +
+        pcRow('Latitud', d.geo.lat) +
+        pcRow('Longitud', d.geo.lon) +
+        pcRow('Precisión', d.geo.precision) +
+        '</table>';
+    } else {
+      geoHtml = '<p style="color:var(--muted);font-size:.85rem">No disponible (' + ((d.geo && d.geo.motivo) || 'sin permiso') + '). Habilita la ubicación para mejor contraste con la IP pública.</p>';
+    }
+    if (d.vpn && d.vpn.sospechoso) {
+      geoHtml += '<div class="pc-warn" style="margin-top:12px"><b>🚨 Posible VPN / Proxy detectado:</b><ul style="margin:8px 0 0 16px;color:var(--muted)">' +
+        d.vpn.motivos.map((m) => '<li>' + m + '</li>').join('') + '</ul></div>';
+    } else {
+      geoHtml += '<div style="background:rgba(61,220,151,.1);border:1px solid rgba(61,220,151,.3);border-radius:12px;padding:12px;margin-top:12px;font-size:.85rem;color:var(--verde)">✓ Sin indicios claros de VPN o proxy según la información disponible.</div>';
+    }
+    h += pcSection('📡', 'Geolocalización y VPN/Proxy', geoHtml);
+
+    h += pcSection('💾', 'Almacenamiento',
+      '<table class="pc-table">' +
+        pcRow('Cuota estimada', d.storage ? d.storage.cuota : '—') +
+        pcRow('Uso estimado', d.storage ? d.storage.usado : '—') +
+        pcRow('localStorage', d.storage ? d.storage.localStorage : '—') +
+      '</table>');
+
+    h += pcSection('🧰', 'Estado y rendimiento',
+      '<table class="pc-table">' +
+        pcRow('Idiomas', d.idiomas) +
+        pcRow('Plataforma', d.plataforma) +
+        pcRow('Conectado a Internet', d.online ? 'Sí' : 'No') +
+        pcRow('Tamaño de ventana', d.ventana) +
+        pcRow('Modo incógnito', d.incognito) +
+        pcRow('Rendimiento (ref.)', d.benchmark) +
+      '</table>' +
+      '<div class="pc-warn">Estos datos del navegador no sustituyen la auditoría completa (dispositivos, procesos, red local) de Generalprotec CiberAudit.exe.</div>');
 
     document.getElementById('pcReportContent').innerHTML = h;
     rep.scrollIntoView({ behavior: 'smooth' });

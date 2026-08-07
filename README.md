@@ -64,6 +64,7 @@ El botón **"Escanear mi equipo"** analiza el PC del visitante usando solo lo qu
 - Dispositivos multimedia (cámara, micrófono, altavoces), fuentes instaladas y batería.
 - APIs soportadas (WebAuthn, WebUSB, WebSerial, Bluetooth, etc.) y preferencias.
 - Análisis de exposición web (huella canvas, IP pública).
+- Geolocalización (con permiso), detección de VPN/Proxy, almacenamiento (cuota/uso), idiomas, modo incógnito y rendimiento de referencia.
 
 Incluye consola animada estilo terminal, informe en pantalla, **imprimir/PDF** y **descarga en HTML**.
 
